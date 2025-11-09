@@ -1,254 +1,308 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import {
+  MessageSquare,
+  Search,
+  Filter,
+  Clock,
+  CheckCircle,
+  AlertCircle,
+  User,
+  Calendar,
+  Tag,
+  Eye,
+  ArrowLeft,
+} from 'lucide-react';
 import Link from 'next/link';
-import { Search, Filter, MessageSquare, Clock, CheckCircle, AlertCircle } from 'lucide-react';
 
 export default function AdminSupportPage() {
-  const tickets = [
-    {
-      id: 'T001',
-      ticketNumber: 'TICKET-001',
-      customer: 'John Doe',
-      subject: 'Document Upload Issue',
-      category: 'Visa',
-      priority: 'High',
-      status: 'Open',
-      reference: 'TRV12345',
-      createdAt: '2024-11-08T10:45:00',
-      lastUpdated: '2024-11-08T12:30:00',
-      assignedTo: 'You',
-      messages: 3,
-    },
-    {
-      id: 'T002',
-      ticketNumber: 'TICKET-002',
-      customer: 'Jane Smith',
-      subject: 'Payment Failed',
-      category: 'Payment',
-      priority: 'Medium',
-      status: 'In Progress',
-      reference: 'ORD12346',
-      createdAt: '2024-11-08T09:20:00',
-      lastUpdated: '2024-11-08T11:45:00',
-      assignedTo: 'Amit Kumar',
-      messages: 5,
-    },
-    {
-      id: 'T003',
-      ticketNumber: 'TICKET-003',
-      customer: 'Rahul Patel',
-      subject: 'Tour Customization Query',
-      category: 'Tour',
-      priority: 'Low',
-      status: 'Resolved',
-      reference: 'TOUR001',
-      createdAt: '2024-11-07T14:30:00',
-      lastUpdated: '2024-11-08T10:15:00',
-      assignedTo: 'Priya Sharma',
-      messages: 7,
-    },
-  ];
+  const router = useRouter();
+  const [tickets, setTickets] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [searchTerm, setSearchTerm] = useState('');
 
-  const stats = [
-    {
-      label: 'Open Tickets',
-      value: '8',
-      icon: MessageSquare,
-      color: 'bg-orange-100 text-orange-600',
-    },
-    {
-      label: 'In Progress',
-      value: '5',
-      icon: Clock,
-      color: 'bg-blue-100 text-blue-600',
-    },
-    {
-      label: 'Resolved Today',
-      value: '12',
-      icon: CheckCircle,
-      color: 'bg-green-100 text-green-600',
-    },
-    {
-      label: 'Avg Response',
-      value: '2.5h',
-      icon: Clock,
-      color: 'bg-purple-100 text-purple-600',
-    },
-  ];
+  useEffect(() => {
+    loadTickets();
+  }, [statusFilter]);
+
+  const loadTickets = async () => {
+    try {
+      const response = await fetch(
+        `/api/support/tickets?status=${statusFilter}`
+      );
+      if (response.ok) {
+        const data = await response.json();
+        setTickets(data.tickets || []);
+      }
+    } catch (error) {
+      console.error('Error loading tickets:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const getStatusConfig = (status: string) => {
+    const configs: Record<string, any> = {
+      open: { icon: AlertCircle, color: 'blue', label: 'Open' },
+      in_progress: { icon: Clock, color: 'yellow', label: 'In Progress' },
+      waiting: { icon: Clock, color: 'orange', label: 'Waiting' },
+      resolved: { icon: CheckCircle, color: 'green', label: 'Resolved' },
+      closed: { icon: CheckCircle, color: 'gray', label: 'Closed' },
+    };
+    return configs[status] || configs.open;
+  };
 
   const getPriorityColor = (priority: string) => {
-    const colors: Record<string, string> = {
-      High: 'bg-red-100 text-red-800',
-      Medium: 'bg-orange-100 text-orange-800',
-      Low: 'bg-green-100 text-green-800',
-    };
-    return colors[priority] || 'bg-gray-100 text-gray-800';
+    switch (priority) {
+      case 'urgent':
+        return 'red';
+      case 'high':
+        return 'orange';
+      case 'medium':
+        return 'yellow';
+      case 'low':
+        return 'gray';
+      default:
+        return 'gray';
+    }
   };
 
-  const getStatusColor = (status: string) => {
-    const colors: Record<string, string> = {
-      Open: 'bg-orange-100 text-orange-800',
-      'In Progress': 'bg-blue-100 text-blue-800',
-      Resolved: 'bg-green-100 text-green-800',
-      Closed: 'bg-gray-100 text-gray-800',
-    };
-    return colors[status] || 'bg-gray-100 text-gray-800';
-  };
+  const filteredTickets = tickets.filter((ticket) => {
+    if (!searchTerm) return true;
+    const term = searchTerm.toLowerCase();
+    return (
+      ticket.ticket_number?.toLowerCase().includes(term) ||
+      ticket.subject?.toLowerCase().includes(term) ||
+      ticket.user?.email?.toLowerCase().includes(term)
+    );
+  });
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">Support Center</h1>
-          <p className="text-gray-600 mt-1">Manage customer support tickets</p>
-        </div>
-        <div className="flex items-center space-x-3">
-          <Link href="/admin/support/templates" className="btn-outline">
-            Templates
+    <div className="min-h-screen bg-gray-50">
+      <div className="max-w-7xl mx-auto px-4 py-8">
+        {/* Header */}
+        <div className="mb-8">
+          <Link
+            href="/admin"
+            className="flex items-center text-gray-600 hover:text-gray-900 mb-4"
+          >
+            <ArrowLeft className="w-5 h-5 mr-2" />
+            Back to Dashboard
           </Link>
-          <button className="btn-primary">Refresh</button>
+          <h1 className="text-3xl font-bold text-gray-900">Support Tickets</h1>
+          <p className="text-gray-600 mt-2">
+            Manage and respond to user support requests
+          </p>
         </div>
-      </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        {stats.map((stat) => {
-          const Icon = stat.icon;
-          return (
-            <div key={stat.label} className="card">
-              <div className="flex items-center justify-between mb-2">
-                <div className={`p-2 rounded-lg ${stat.color}`}>
-                  <Icon className="w-6 h-6" />
-                </div>
+        {/* Stats */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+          <div className="bg-white rounded-xl shadow-md p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-600">Open Tickets</p>
+                <p className="text-3xl font-bold text-gray-900">
+                  {tickets.filter((t) => t.status === 'open').length}
+                </p>
               </div>
-              <p className="text-2xl font-bold text-gray-900">{stat.value}</p>
-              <p className="text-sm text-gray-600">{stat.label}</p>
+              <AlertCircle className="w-10 h-10 text-blue-500" />
             </div>
-          );
-        })}
-      </div>
-
-      {/* Filters */}
-      <div className="card">
-        <div className="grid md:grid-cols-5 gap-4">
-          <div className="md:col-span-2 relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-            <input
-              type="text"
-              placeholder="Search tickets..."
-              className="input-field pl-10"
-            />
           </div>
-          <select className="input-field">
-            <option>All Status</option>
-            <option>Open</option>
-            <option>In Progress</option>
-            <option>Resolved</option>
-            <option>Closed</option>
-          </select>
-          <select className="input-field">
-            <option>All Priority</option>
-            <option>High</option>
-            <option>Medium</option>
-            <option>Low</option>
-          </select>
-          <select className="input-field">
-            <option>All Assigned</option>
-            <option>Assigned to Me</option>
-            <option>Unassigned</option>
-          </select>
+          <div className="bg-white rounded-xl shadow-md p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-600">In Progress</p>
+                <p className="text-3xl font-bold text-gray-900">
+                  {tickets.filter((t) => t.status === 'in_progress').length}
+                </p>
+              </div>
+              <Clock className="w-10 h-10 text-yellow-500" />
+            </div>
+          </div>
+          <div className="bg-white rounded-xl shadow-md p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-600">Resolved</p>
+                <p className="text-3xl font-bold text-gray-900">
+                  {tickets.filter((t) => t.status === 'resolved').length}
+                </p>
+              </div>
+              <CheckCircle className="w-10 h-10 text-green-500" />
+            </div>
+          </div>
+          <div className="bg-white rounded-xl shadow-md p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-600">Urgent</p>
+                <p className="text-3xl font-bold text-gray-900">
+                  {tickets.filter((t) => t.priority === 'urgent').length}
+                </p>
+              </div>
+              <AlertCircle className="w-10 h-10 text-red-500" />
+            </div>
+          </div>
         </div>
-      </div>
 
-      {/* Tickets Table */}
-      <div className="card overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-gray-50 border-b border-gray-200">
-              <tr>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase">
-                  Ticket ID
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase">
-                  Customer
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase">
-                  Subject
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase">
-                  Category
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase">
-                  Priority
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase">
-                  Status
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase">
-                  Assigned
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase">
-                  Last Updated
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase">
-                  Actions
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200">
-              {tickets.map((ticket) => (
-                <tr key={ticket.id} className="hover:bg-gray-50">
-                  <td className="px-4 py-4">
-                    <div>
-                      <p className="text-sm font-medium text-gray-900">
-                        {ticket.ticketNumber}
-                      </p>
-                      <p className="text-xs text-gray-500">
-                        {ticket.messages} messages
-                      </p>
-                    </div>
-                  </td>
-                  <td className="px-4 py-4 text-sm text-gray-900">{ticket.customer}</td>
-                  <td className="px-4 py-4">
-                    <p className="text-sm font-medium text-gray-900">{ticket.subject}</p>
-                    <p className="text-xs text-gray-500">Ref: {ticket.reference}</p>
-                  </td>
-                  <td className="px-4 py-4">
-                    <span className="badge bg-gray-100 text-gray-800 text-xs">
-                      {ticket.category}
-                    </span>
-                  </td>
-                  <td className="px-4 py-4">
-                    <span className={`badge text-xs ${getPriorityColor(ticket.priority)}`}>
-                      {ticket.priority}
-                    </span>
-                  </td>
-                  <td className="px-4 py-4">
-                    <span className={`badge text-xs ${getStatusColor(ticket.status)}`}>
-                      {ticket.status}
-                    </span>
-                  </td>
-                  <td className="px-4 py-4 text-sm text-gray-700">{ticket.assignedTo}</td>
-                  <td className="px-4 py-4 text-sm text-gray-700">
-                    {new Date(ticket.lastUpdated).toLocaleString()}
-                  </td>
-                  <td className="px-4 py-4">
-                    <Link
-                      href={`/admin/support/${ticket.id}`}
-                      className="text-primary-600 hover:text-primary-700 font-medium text-sm"
-                    >
-                      View
-                    </Link>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        {/* Filters */}
+        <div className="bg-white rounded-xl shadow-md p-6 mb-6">
+          <div className="flex flex-col md:flex-row gap-4">
+            <div className="flex-1 relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+              <input
+                type="text"
+                placeholder="Search tickets..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+              />
+            </div>
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+            >
+              <option value="all">All Status</option>
+              <option value="open">Open</option>
+              <option value="in_progress">In Progress</option>
+              <option value="waiting">Waiting</option>
+              <option value="resolved">Resolved</option>
+              <option value="closed">Closed</option>
+            </select>
+          </div>
+        </div>
+
+        {/* Tickets Table */}
+        <div className="bg-white rounded-xl shadow-md">
+          <div className="px-6 py-4 border-b border-gray-200">
+            <h2 className="text-lg font-bold text-gray-900">
+              Tickets ({filteredTickets.length})
+            </h2>
+          </div>
+
+          {loading ? (
+            <div className="p-12 text-center">
+              <Clock className="w-12 h-12 animate-spin text-primary-600 mx-auto mb-4" />
+              <p className="text-gray-600">Loading tickets...</p>
+            </div>
+          ) : filteredTickets.length === 0 ? (
+            <div className="p-12 text-center">
+              <MessageSquare className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                No tickets found
+              </h3>
+              <p className="text-gray-600">
+                {searchTerm
+                  ? 'Try adjusting your search'
+                  : 'Support tickets will appear here'}
+              </p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-gray-50 border-b border-gray-200">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                      Ticket
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                      User
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                      Category
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                      Priority
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                      Status
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                      Created
+                    </th>
+                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">
+                      Actions
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200">
+                  {filteredTickets.map((ticket) => {
+                    const statusConfig = getStatusConfig(ticket.status);
+                    const StatusIcon = statusConfig.icon;
+
+                    return (
+                      <tr key={ticket.id} className="hover:bg-gray-50">
+                        <td className="px-6 py-4">
+                          <div>
+                            <p className="font-medium text-gray-900">
+                              {ticket.ticket_number}
+                            </p>
+                            <p className="text-sm text-gray-600 line-clamp-1">
+                              {ticket.subject}
+                            </p>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="flex items-center">
+                            <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center mr-2">
+                              <User className="w-4 h-4 text-gray-600" />
+                            </div>
+                            <div>
+                              <p className="text-sm text-gray-900">
+                                {ticket.user?.full_name || 'User'}
+                              </p>
+                              <p className="text-xs text-gray-500">
+                                {ticket.user?.email}
+                              </p>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                            {ticket.category}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4">
+                          <span
+                            className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-${getPriorityColor(
+                              ticket.priority
+                            )}-100 text-${getPriorityColor(ticket.priority)}-800`}
+                          >
+                            {ticket.priority}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4">
+                          <span
+                            className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-${statusConfig.color}-100 text-${statusConfig.color}-800`}
+                          >
+                            <StatusIcon className="w-3 h-3 mr-1" />
+                            {statusConfig.label}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 text-sm text-gray-600">
+                          {new Date(ticket.created_at).toLocaleDateString()}
+                        </td>
+                        <td className="px-6 py-4 text-right">
+                          <button
+                            onClick={() =>
+                              router.push(`/admin/support/tickets/${ticket.id}`)
+                            }
+                            className="text-primary-600 hover:text-primary-900 p-2 hover:bg-primary-50 rounded-lg"
+                          >
+                            <Eye className="w-4 h-4" />
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       </div>
     </div>
   );
 }
-
