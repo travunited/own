@@ -1,46 +1,49 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import Link from 'next/link';
 import {
   Users,
   FileText,
-  CreditCard,
-  Globe,
+  DollarSign,
   TrendingUp,
-  Settings,
+  Globe,
+  Plane,
   Shield,
   Activity,
-  DollarSign,
-  AlertCircle,
-  CheckCircle,
   Clock,
+  CheckCircle,
+  AlertTriangle,
+  MessageSquare,
+  Eye,
+  ArrowRight,
   BarChart3,
-  PieChart,
-  ArrowUpRight,
-  ArrowDownRight,
+  CreditCard,
+  Settings,
 } from 'lucide-react';
 
 export default function SuperAdminDashboard() {
+  const supabase = createClientComponentClient();
+  const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({
     totalUsers: 0,
     activeUsers: 0,
+    newUsersToday: 0,
     totalApplications: 0,
     pendingApplications: 0,
     approvedApplications: 0,
     rejectedApplications: 0,
     totalRevenue: 0,
-    monthlyRevenue: 0,
-    successRate: 0,
-    totalPayments: 0,
+    revenueThisMonth: 0,
+    totalTours: 0,
+    tourBookings: 0,
+    totalCountries: 0,
+    supportTickets: 0,
     pendingPayments: 0,
-    countries: 0,
-    visaTypes: 0,
+    activeAdmins: 0,
   });
-
-  const [revenueChart, setRevenueChart] = useState<any[]>([]);
-  const [applicationChart, setApplicationChart] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [recentActivity, setRecentActivity] = useState<any[]>([]);
 
   useEffect(() => {
     loadDashboardData();
@@ -48,22 +51,75 @@ export default function SuperAdminDashboard() {
 
   const loadDashboardData = async () => {
     try {
-      // TODO: Replace with actual API call
+      // Fetch all stats in parallel
+      const [
+        { count: totalUsers },
+        { count: activeUsers },
+        { count: totalApplications },
+        { data: applications },
+        { count: totalTours },
+        { count: tourBookings },
+        { count: totalCountries },
+        { data: payments },
+      ] = await Promise.all([
+        supabase.from('user_profiles').select('*', { count: 'exact', head: true }),
+        supabase.from('user_profiles').select('*', { count: 'exact', head: true }).eq('is_active', true),
+        supabase.from('visa_applications').select('*', { count: 'exact', head: true }),
+        supabase.from('visa_applications').select('status, created_at, payment_amount'),
+        supabase.from('tour_packages').select('*', { count: 'exact', head: true }),
+        supabase.from('tour_bookings').select('*', { count: 'exact', head: true }),
+        supabase.from('visa_countries').select('*', { count: 'exact', head: true }),
+        supabase.from('payments').select('amount, status, created_at'),
+      ]);
+
+      // Calculate application stats
+      const pendingApplications = applications?.filter(
+        (a) => a.status === 'under_review' || a.status === 'documents_submitted'
+      ).length || 0;
+      const approvedApplications = applications?.filter((a) => a.status === 'approved').length || 0;
+      const rejectedApplications = applications?.filter((a) => a.status === 'rejected').length || 0;
+
+      // Calculate revenue
+      const totalRevenue = payments?.filter((p) => p.status === 'completed')
+        .reduce((sum, p) => sum + (p.amount || 0), 0) || 0;
+      
+      const thisMonth = new Date();
+      thisMonth.setDate(1);
+      const revenueThisMonth = payments?.filter(
+        (p) => p.status === 'completed' && new Date(p.created_at) >= thisMonth
+      ).reduce((sum, p) => sum + (p.amount || 0), 0) || 0;
+
+      const today = new Date().toDateString();
+      const newUsersToday = applications?.filter(
+        (a) => new Date(a.created_at).toDateString() === today
+      ).length || 0;
+
       setStats({
-        totalUsers: 1250,
-        activeUsers: 892,
-        totalApplications: 3420,
-        pendingApplications: 145,
-        approvedApplications: 2890,
-        rejectedApplications: 385,
-        totalRevenue: 25000000,
-        monthlyRevenue: 3200000,
-        successRate: 84.5,
-        totalPayments: 3200,
-        pendingPayments: 28,
-        countries: 45,
-        visaTypes: 180,
+        totalUsers: totalUsers || 0,
+        activeUsers: activeUsers || 0,
+        newUsersToday,
+        totalApplications: totalApplications || 0,
+        pendingApplications,
+        approvedApplications,
+        rejectedApplications,
+        totalRevenue,
+        revenueThisMonth,
+        totalTours: totalTours || 0,
+        tourBookings: tourBookings || 0,
+        totalCountries: totalCountries || 0,
+        supportTickets: 0, // TODO: When support system is ready
+        pendingPayments: payments?.filter((p) => p.status === 'pending').length || 0,
+        activeAdmins: 0, // TODO: Query admin users
       });
+
+      // Load recent activity
+      const { data: recentApps } = await supabase
+        .from('visa_applications')
+        .select('*, user:user_profiles(full_name)')
+        .order('created_at', { ascending: false })
+        .limit(10);
+
+      setRecentActivity(recentApps || []);
     } catch (error) {
       console.error('Error loading dashboard:', error);
     } finally {
@@ -71,164 +127,11 @@ export default function SuperAdminDashboard() {
     }
   };
 
-  const formatCurrency = (amount: number) => {
-    return `₹${(amount / 100000).toFixed(2)}L`;
-  };
-
-  const quickStats = [
-    {
-      name: 'Total Users',
-      value: stats.totalUsers.toLocaleString(),
-      change: '+12.5%',
-      trend: 'up',
-      icon: Users,
-      color: 'blue',
-      link: '/super-admin/users',
-    },
-    {
-      name: 'Active Applications',
-      value: stats.pendingApplications,
-      change: '+5.2%',
-      trend: 'up',
-      icon: FileText,
-      color: 'purple',
-      link: '/super-admin/applications',
-    },
-    {
-      name: 'Monthly Revenue',
-      value: formatCurrency(stats.monthlyRevenue),
-      change: '+18.3%',
-      trend: 'up',
-      icon: DollarSign,
-      color: 'green',
-      link: '/super-admin/payments',
-    },
-    {
-      name: 'Success Rate',
-      value: `${stats.successRate}%`,
-      change: '+2.1%',
-      trend: 'up',
-      icon: TrendingUp,
-      color: 'orange',
-      link: '/super-admin/analytics',
-    },
-  ];
-
-  const managementSections = [
-    {
-      title: 'User Management',
-      description: 'Manage users, assign roles, view activity',
-      icon: Users,
-      color: 'blue',
-      link: '/super-admin/users',
-      stats: [
-        { label: 'Total Users', value: stats.totalUsers },
-        { label: 'Active', value: stats.activeUsers },
-      ],
-    },
-    {
-      title: 'Application Management',
-      description: 'View, filter, and manage all applications',
-      icon: FileText,
-      color: 'purple',
-      link: '/super-admin/applications',
-      stats: [
-        { label: 'Total', value: stats.totalApplications },
-        { label: 'Pending', value: stats.pendingApplications },
-      ],
-    },
-    {
-      title: 'Payment Management',
-      description: 'View payments, process refunds, analytics',
-      icon: CreditCard,
-      color: 'green',
-      link: '/super-admin/payments',
-      stats: [
-        { label: 'Total Payments', value: stats.totalPayments },
-        { label: 'Pending', value: stats.pendingPayments },
-      ],
-    },
-    {
-      title: 'Country & Visa Management',
-      description: 'Manage countries, visa types, pricing',
-      icon: Globe,
-      color: 'indigo',
-      link: '/super-admin/countries',
-      stats: [
-        { label: 'Countries', value: stats.countries },
-        { label: 'Visa Types', value: stats.visaTypes },
-      ],
-    },
-    {
-      title: 'Analytics Dashboard',
-      description: 'Revenue, conversion, performance metrics',
-      icon: BarChart3,
-      color: 'orange',
-      link: '/super-admin/analytics',
-      stats: [
-        { label: 'Success Rate', value: `${stats.successRate}%` },
-        { label: 'Revenue', value: formatCurrency(stats.monthlyRevenue) },
-      ],
-    },
-    {
-      title: 'System Configuration',
-      description: 'Settings, integrations, security',
-      icon: Settings,
-      color: 'gray',
-      link: '/super-admin/settings',
-      stats: [
-        { label: 'Email', value: 'Active' },
-        { label: 'Payment', value: 'Active' },
-      ],
-    },
-  ];
-
-  const recentActivity = [
-    {
-      type: 'user',
-      action: 'New user registered',
-      details: 'john.doe@example.com',
-      time: '2 minutes ago',
-      icon: Users,
-      color: 'blue',
-    },
-    {
-      type: 'application',
-      action: 'Application approved',
-      details: 'TVU-20250109-00123',
-      time: '5 minutes ago',
-      icon: CheckCircle,
-      color: 'green',
-    },
-    {
-      type: 'payment',
-      action: 'Payment received',
-      details: '₹15,000',
-      time: '12 minutes ago',
-      icon: DollarSign,
-      color: 'green',
-    },
-    {
-      type: 'alert',
-      action: 'Failed payment',
-      details: 'TVU-20250109-00124',
-      time: '18 minutes ago',
-      icon: AlertCircle,
-      color: 'red',
-    },
-  ];
-
-  const applicationBreakdown = [
-    { status: 'Pending', count: stats.pendingApplications, color: 'yellow' },
-    { status: 'Approved', count: stats.approvedApplications, color: 'green' },
-    { status: 'Rejected', count: stats.rejectedApplications, color: 'red' },
-  ];
-
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <Activity className="w-12 h-12 animate-spin text-primary-600 mx-auto mb-4" />
+          <div className="animate-spin w-12 h-12 border-4 border-primary-600 border-t-transparent rounded-full mx-auto mb-4"></div>
           <p className="text-gray-600">Loading super admin dashboard...</p>
         </div>
       </div>
@@ -236,215 +139,382 @@ export default function SuperAdminDashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
+    <div className="min-h-screen bg-gray-50">
       <div className="max-w-7xl mx-auto px-4 py-8">
         {/* Header */}
         <div className="mb-8">
-          <div className="flex items-center mb-2">
-            <Shield className="w-8 h-8 text-red-600 mr-3" />
-            <h1 className="text-4xl font-bold text-gray-900">Super Admin</h1>
-          </div>
-          <p className="text-gray-600 text-lg">Complete system control & analytics</p>
+          <h1 className="text-4xl font-bold text-gray-900">Super Admin Dashboard</h1>
+          <p className="text-gray-600 mt-2">Complete system overview and control</p>
         </div>
 
-        {/* Quick Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          {quickStats.map((stat, index) => {
-            const Icon = stat.icon;
-            const isUp = stat.trend === 'up';
+        {/* Primary Stats */}
+        <div className="grid md:grid-cols-4 gap-6 mb-8">
+          <div className="bg-gradient-to-br from-blue-500 to-blue-600 text-white rounded-xl shadow-lg p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-blue-100 mb-1">Total Users</p>
+                <p className="text-4xl font-bold">{stats.totalUsers}</p>
+                <p className="text-sm text-blue-100 mt-2">+{stats.newUsersToday} today</p>
+              </div>
+              <Users className="w-12 h-12 text-white/30" />
+            </div>
+          </div>
 
-            return (
-              <Link
-                key={index}
-                href={stat.link}
-                className="bg-white rounded-xl shadow-lg p-6 hover:shadow-xl transition-all transform hover:-translate-y-1"
-              >
-                <div className="flex items-center justify-between mb-4">
-                  <div
-                    className={`p-3 rounded-lg bg-${stat.color}-100`}
-                  >
-                    <Icon className={`w-6 h-6 text-${stat.color}-600`} />
+          <div className="bg-gradient-to-br from-green-500 to-emerald-600 text-white rounded-xl shadow-lg p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-green-100 mb-1">Total Revenue</p>
+                <p className="text-4xl font-bold">₹{(stats.totalRevenue / 100000).toFixed(1)}L</p>
+                <p className="text-sm text-green-100 mt-2">₹{(stats.revenueThisMonth / 1000).toFixed(0)}K this month</p>
+              </div>
+              <DollarSign className="w-12 h-12 text-white/30" />
+            </div>
+          </div>
+
+          <div className="bg-gradient-to-br from-purple-500 to-purple-600 text-white rounded-xl shadow-lg p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-purple-100 mb-1">Applications</p>
+                <p className="text-4xl font-bold">{stats.totalApplications}</p>
+                <p className="text-sm text-purple-100 mt-2">{stats.pendingApplications} pending</p>
+              </div>
+              <FileText className="w-12 h-12 text-white/30" />
+            </div>
+          </div>
+
+          <div className="bg-gradient-to-br from-orange-500 to-orange-600 text-white rounded-xl shadow-lg p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-orange-100 mb-1">Tour Bookings</p>
+                <p className="text-4xl font-bold">{stats.tourBookings}</p>
+                <p className="text-sm text-orange-100 mt-2">{stats.totalTours} packages</p>
+              </div>
+              <Plane className="w-12 h-12 text-white/30" />
+            </div>
+          </div>
+        </div>
+
+        {/* Secondary Stats */}
+        <div className="grid md:grid-cols-6 gap-4 mb-8">
+          <div className="bg-white rounded-xl shadow-sm p-4 border border-gray-100">
+            <p className="text-xs text-gray-600 mb-1">Countries</p>
+            <p className="text-2xl font-bold text-gray-900">{stats.totalCountries}</p>
+          </div>
+          <div className="bg-white rounded-xl shadow-sm p-4 border border-gray-100">
+            <p className="text-xs text-gray-600 mb-1">Approved</p>
+            <p className="text-2xl font-bold text-green-600">{stats.approvedApplications}</p>
+          </div>
+          <div className="bg-white rounded-xl shadow-sm p-4 border border-gray-100">
+            <p className="text-xs text-gray-600 mb-1">Rejected</p>
+            <p className="text-2xl font-bold text-red-600">{stats.rejectedApplications}</p>
+          </div>
+          <div className="bg-white rounded-xl shadow-sm p-4 border border-gray-100">
+            <p className="text-xs text-gray-600 mb-1">Active Users</p>
+            <p className="text-2xl font-bold text-blue-600">{stats.activeUsers}</p>
+          </div>
+          <div className="bg-white rounded-xl shadow-sm p-4 border border-gray-100">
+            <p className="text-xs text-gray-600 mb-1">Pending Payment</p>
+            <p className="text-2xl font-bold text-yellow-600">{stats.pendingPayments}</p>
+          </div>
+          <div className="bg-white rounded-xl shadow-sm p-4 border border-gray-100">
+            <p className="text-xs text-gray-600 mb-1">Support Tickets</p>
+            <p className="text-2xl font-bold text-purple-600">{stats.supportTickets}</p>
+          </div>
+        </div>
+
+        <div className="grid md:grid-cols-3 gap-6 mb-8">
+          {/* Recent Activity */}
+          <div className="md:col-span-2 bg-white rounded-xl shadow-sm p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-bold text-gray-900">Recent Applications</h3>
+              <Link href="/admin/applications" className="text-primary-600 hover:text-primary-700 text-sm font-medium">
+                View All →
+              </Link>
+            </div>
+            <div className="space-y-3">
+              {recentActivity.slice(0, 5).map((activity) => (
+                <div
+                  key={activity.id}
+                  className="flex items-center justify-between p-3 hover:bg-gray-50 rounded-lg transition-colors"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-primary-100 rounded-full flex items-center justify-center">
+                      <FileText className="w-5 h-5 text-primary-600" />
+                    </div>
+                    <div>
+                      <p className="font-medium text-gray-900">
+                        {activity.user?.full_name || 'User'}
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        {activity.application_number} • {new Date(activity.created_at).toLocaleDateString()}
+                      </p>
+                    </div>
                   </div>
-                  <div
-                    className={`flex items-center text-sm font-semibold ${
-                      isUp ? 'text-green-600' : 'text-red-600'
+                  <span
+                    className={`px-2 py-1 text-xs rounded-full ${
+                      activity.status === 'approved'
+                        ? 'bg-green-100 text-green-800'
+                        : activity.status === 'under_review'
+                        ? 'bg-yellow-100 text-yellow-800'
+                        : 'bg-gray-100 text-gray-800'
                     }`}
                   >
-                    {isUp ? (
-                      <ArrowUpRight className="w-4 h-4 mr-1" />
-                    ) : (
-                      <ArrowDownRight className="w-4 h-4 mr-1" />
-                    )}
-                    {stat.change}
-                  </div>
+                    {activity.status}
+                  </span>
                 </div>
-                <h3 className="text-3xl font-bold text-gray-900 mb-1">{stat.value}</h3>
-                <p className="text-sm text-gray-600">{stat.name}</p>
-              </Link>
-            );
-          })}
-        </div>
-
-        {/* Application Breakdown */}
-        <div className="bg-white rounded-xl shadow-lg p-6 mb-8">
-          <h2 className="text-xl font-bold text-gray-900 mb-6">Application Status Overview</h2>
-          <div className="grid grid-cols-3 gap-6">
-            {applicationBreakdown.map((item) => (
-              <div
-                key={item.status}
-                className={`p-6 rounded-xl bg-${item.color}-50 border-2 border-${item.color}-200`}
-              >
-                <p className={`text-sm font-medium text-${item.color}-700 mb-2`}>
-                  {item.status}
-                </p>
-                <p className={`text-4xl font-bold text-${item.color}-700`}>
-                  {item.count.toLocaleString()}
-                </p>
-                <p className="text-xs text-gray-600 mt-2">
-                  {((item.count / stats.totalApplications) * 100).toFixed(1)}% of total
-                </p>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
-          {/* Management Sections */}
-          <div className="lg:col-span-2">
-            <h2 className="text-2xl font-bold text-gray-900 mb-6">Management Center</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {managementSections.map((section) => {
-                const Icon = section.icon;
-
-                return (
-                  <Link
-                    key={section.title}
-                    href={section.link}
-                    className="bg-white rounded-xl shadow-md p-6 hover:shadow-xl transition-all group"
-                  >
-                    <div className="flex items-start justify-between mb-4">
-                      <div
-                        className={`p-3 rounded-lg bg-${section.color}-100 group-hover:bg-${section.color}-200 transition-colors`}
-                      >
-                        <Icon className={`w-6 h-6 text-${section.color}-600`} />
-                      </div>
-                      <ArrowUpRight className="w-5 h-5 text-gray-400 group-hover:text-primary-600 transition-colors" />
-                    </div>
-                    <h3 className="text-lg font-bold text-gray-900 mb-2">
-                      {section.title}
-                    </h3>
-                    <p className="text-sm text-gray-600 mb-4">{section.description}</p>
-                    <div className="flex items-center justify-between pt-4 border-t border-gray-100">
-                      {section.stats.map((stat, idx) => (
-                        <div key={idx} className="text-center">
-                          <p className="text-xs text-gray-600">{stat.label}</p>
-                          <p className="text-lg font-bold text-gray-900">{stat.value}</p>
-                        </div>
-                      ))}
-                    </div>
-                  </Link>
-                );
-              })}
+              ))}
             </div>
           </div>
 
-          {/* Recent Activity */}
-          <div>
-            <h2 className="text-2xl font-bold text-gray-900 mb-6">Recent Activity</h2>
-            <div className="bg-white rounded-xl shadow-md p-6">
-              <div className="space-y-4">
-                {recentActivity.map((activity, index) => {
-                  const Icon = activity.icon;
-
-                  return (
-                    <div
-                      key={index}
-                      className="flex items-start space-x-4 pb-4 border-b border-gray-100 last:border-0 last:pb-0"
-                    >
-                      <div
-                        className={`p-2 rounded-lg bg-${activity.color}-100 flex-shrink-0`}
-                      >
-                        <Icon className={`w-4 h-4 text-${activity.color}-600`} />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-gray-900">
-                          {activity.action}
-                        </p>
-                        <p className="text-sm text-gray-600 truncate">
-                          {activity.details}
-                        </p>
-                        <p className="text-xs text-gray-400 mt-1">{activity.time}</p>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
+          {/* Quick Actions */}
+          <div className="bg-white rounded-xl shadow-sm p-6">
+            <h3 className="text-lg font-bold text-gray-900 mb-4">Quick Actions</h3>
+            <div className="space-y-3">
               <Link
-                href="/super-admin/activity"
-                className="block text-center text-sm text-primary-600 hover:text-primary-700 font-medium mt-4 pt-4 border-t border-gray-100"
+                href="/admin/users"
+                className="flex items-center gap-3 p-3 hover:bg-gray-50 rounded-lg transition-colors"
               >
-                View All Activity →
+                <Users className="w-5 h-5 text-blue-600" />
+                <span className="font-medium text-gray-700">Manage Users</span>
               </Link>
-            </div>
-
-            {/* Quick Actions */}
-            <div className="bg-gradient-to-br from-primary-600 to-purple-600 rounded-xl shadow-lg p-6 mt-6 text-white">
-              <h3 className="text-lg font-bold mb-4">Quick Actions</h3>
-              <div className="space-y-3">
-                <Link
-                  href="/super-admin/users/create"
-                  className="block bg-white/20 hover:bg-white/30 backdrop-blur-sm rounded-lg p-3 transition-colors"
-                >
-                  <p className="font-medium">Create Admin User</p>
-                  <p className="text-xs text-white/80">Assign roles & permissions</p>
-                </Link>
-                <Link
-                  href="/super-admin/countries/create"
-                  className="block bg-white/20 hover:bg-white/30 backdrop-blur-sm rounded-lg p-3 transition-colors"
-                >
-                  <p className="font-medium">Add Country/Visa</p>
-                  <p className="text-xs text-white/80">Configure visa types</p>
-                </Link>
-                <Link
-                  href="/super-admin/settings"
-                  className="block bg-white/20 hover:bg-white/30 backdrop-blur-sm rounded-lg p-3 transition-colors"
-                >
-                  <p className="font-medium">System Settings</p>
-                  <p className="text-xs text-white/80">Configure integrations</p>
-                </Link>
-              </div>
+              <Link
+                href="/admin/countries"
+                className="flex items-center gap-3 p-3 hover:bg-gray-50 rounded-lg transition-colors"
+              >
+                <Globe className="w-5 h-5 text-green-600" />
+                <span className="font-medium text-gray-700">Manage Countries</span>
+              </Link>
+              <Link
+                href="/admin/payments"
+                className="flex items-center gap-3 p-3 hover:bg-gray-50 rounded-lg transition-colors"
+              >
+                <CreditCard className="w-5 h-5 text-purple-600" />
+                <span className="font-medium text-gray-700">View Payments</span>
+              </Link>
+              <Link
+                href="/admin/analytics/social"
+                className="flex items-center gap-3 p-3 hover:bg-gray-50 rounded-lg transition-colors"
+              >
+                <BarChart3 className="w-5 h-5 text-orange-600" />
+                <span className="font-medium text-gray-700">Analytics</span>
+              </Link>
+              <Link
+                href="/admin/system"
+                className="flex items-center gap-3 p-3 hover:bg-gray-50 rounded-lg transition-colors"
+              >
+                <Settings className="w-5 h-5 text-gray-600" />
+                <span className="font-medium text-gray-700">System Settings</span>
+              </Link>
             </div>
           </div>
         </div>
 
-        {/* System Health */}
-        <div className="bg-white rounded-xl shadow-lg p-6">
-          <h2 className="text-xl font-bold text-gray-900 mb-6">System Health</h2>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="text-center p-4 bg-green-50 rounded-lg">
-              <CheckCircle className="w-8 h-8 text-green-600 mx-auto mb-2" />
-              <p className="text-sm font-medium text-gray-900">Database</p>
-              <p className="text-xs text-green-600">Healthy</p>
+        {/* Management Sections */}
+        <div className="grid md:grid-cols-3 gap-6">
+          {/* User Management */}
+          <Link
+            href="/admin/users"
+            className="bg-white rounded-xl shadow-sm p-6 border border-gray-100 hover:shadow-md transition-all hover:scale-105"
+          >
+            <div className="flex items-center justify-between mb-4">
+              <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
+                <Users className="w-6 h-6 text-blue-600" />
+              </div>
+              <ArrowRight className="w-5 h-5 text-gray-400" />
             </div>
-            <div className="text-center p-4 bg-green-50 rounded-lg">
-              <CheckCircle className="w-8 h-8 text-green-600 mx-auto mb-2" />
-              <p className="text-sm font-medium text-gray-900">Payment Gateway</p>
-              <p className="text-xs text-green-600">Connected</p>
+            <h3 className="font-bold text-lg text-gray-900 mb-2">User Management</h3>
+            <p className="text-sm text-gray-600 mb-4">
+              Manage users, roles, and permissions
+            </p>
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-gray-600">Total Users</span>
+              <span className="font-bold text-gray-900">{stats.totalUsers}</span>
             </div>
-            <div className="text-center p-4 bg-green-50 rounded-lg">
-              <CheckCircle className="w-8 h-8 text-green-600 mx-auto mb-2" />
-              <p className="text-sm font-medium text-gray-900">Email Service</p>
-              <p className="text-xs text-green-600">Active</p>
+          </Link>
+
+          {/* Application Management */}
+          <Link
+            href="/admin/applications"
+            className="bg-white rounded-xl shadow-sm p-6 border border-gray-100 hover:shadow-md transition-all hover:scale-105"
+          >
+            <div className="flex items-center justify-between mb-4">
+              <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
+                <FileText className="w-6 h-6 text-purple-600" />
+              </div>
+              <ArrowRight className="w-5 h-5 text-gray-400" />
             </div>
-            <div className="text-center p-4 bg-green-50 rounded-lg">
-              <CheckCircle className="w-8 h-8 text-green-600 mx-auto mb-2" />
-              <p className="text-sm font-medium text-gray-900">Storage</p>
-              <p className="text-xs text-green-600">85% Available</p>
+            <h3 className="font-bold text-lg text-gray-900 mb-2">Applications</h3>
+            <p className="text-sm text-gray-600 mb-4">
+              Review and process visa applications
+            </p>
+            <div className="space-y-1 text-sm">
+              <div className="flex justify-between">
+                <span className="text-gray-600">Pending</span>
+                <span className="font-bold text-yellow-600">{stats.pendingApplications}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-600">Approved</span>
+                <span className="font-bold text-green-600">{stats.approvedApplications}</span>
+              </div>
             </div>
-          </div>
+          </Link>
+
+          {/* Payment Management */}
+          <Link
+            href="/admin/payments"
+            className="bg-white rounded-xl shadow-sm p-6 border border-gray-100 hover:shadow-md transition-all hover:scale-105"
+          >
+            <div className="flex items-center justify-between mb-4">
+              <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
+                <DollarSign className="w-6 h-6 text-green-600" />
+              </div>
+              <ArrowRight className="w-5 h-5 text-gray-400" />
+            </div>
+            <h3 className="font-bold text-lg text-gray-900 mb-2">Payments</h3>
+            <p className="text-sm text-gray-600 mb-4">
+              Monitor payments and refunds
+            </p>
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-gray-600">This Month</span>
+              <span className="font-bold text-green-600">
+                ₹{(stats.revenueThisMonth / 1000).toFixed(0)}K
+              </span>
+            </div>
+          </Link>
+
+          {/* Country Management */}
+          <Link
+            href="/admin/countries"
+            className="bg-white rounded-xl shadow-sm p-6 border border-gray-100 hover:shadow-md transition-all hover:scale-105"
+          >
+            <div className="flex items-center justify-between mb-4">
+              <div className="w-12 h-12 bg-cyan-100 rounded-lg flex items-center justify-center">
+                <Globe className="w-6 h-6 text-cyan-600" />
+              </div>
+              <ArrowRight className="w-5 h-5 text-gray-400" />
+            </div>
+            <h3 className="font-bold text-lg text-gray-900 mb-2">Countries</h3>
+            <p className="text-sm text-gray-600 mb-4">
+              Manage visa countries and types
+            </p>
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-gray-600">Total Countries</span>
+              <span className="font-bold text-gray-900">{stats.totalCountries}</span>
+            </div>
+          </Link>
+
+          {/* Tour Management */}
+          <Link
+            href="/admin/tours"
+            className="bg-white rounded-xl shadow-sm p-6 border border-gray-100 hover:shadow-md transition-all hover:scale-105"
+          >
+            <div className="flex items-center justify-between mb-4">
+              <div className="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center">
+                <Plane className="w-6 h-6 text-orange-600" />
+              </div>
+              <ArrowRight className="w-5 h-5 text-gray-400" />
+            </div>
+            <h3 className="font-bold text-lg text-gray-900 mb-2">Tours</h3>
+            <p className="text-sm text-gray-600 mb-4">
+              Manage tour packages and bookings
+            </p>
+            <div className="space-y-1 text-sm">
+              <div className="flex justify-between">
+                <span className="text-gray-600">Packages</span>
+                <span className="font-bold text-gray-900">{stats.totalTours}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-600">Bookings</span>
+                <span className="font-bold text-orange-600">{stats.tourBookings}</span>
+              </div>
+            </div>
+          </Link>
+
+          {/* Blog Management */}
+          <Link
+            href="/admin/content/blog"
+            className="bg-white rounded-xl shadow-sm p-6 border border-gray-100 hover:shadow-md transition-all hover:scale-105"
+          >
+            <div className="flex items-center justify-between mb-4">
+              <div className="w-12 h-12 bg-pink-100 rounded-lg flex items-center justify-center">
+                <FileText className="w-6 h-6 text-pink-600" />
+              </div>
+              <ArrowRight className="w-5 h-5 text-gray-400" />
+            </div>
+            <h3 className="font-bold text-lg text-gray-900 mb-2">Blog CMS</h3>
+            <p className="text-sm text-gray-600 mb-4">
+              Create and manage blog content
+            </p>
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-gray-600">Published</span>
+              <span className="font-bold text-gray-900">24</span>
+            </div>
+          </Link>
+
+          {/* Role Management */}
+          <Link
+            href="/admin/roles"
+            className="bg-white rounded-xl shadow-sm p-6 border border-gray-100 hover:shadow-md transition-all hover:scale-105"
+          >
+            <div className="flex items-center justify-between mb-4">
+              <div className="w-12 h-12 bg-indigo-100 rounded-lg flex items-center justify-center">
+                <Shield className="w-6 h-6 text-indigo-600" />
+              </div>
+              <ArrowRight className="w-5 h-5 text-gray-400" />
+            </div>
+            <h3 className="font-bold text-lg text-gray-900 mb-2">Roles</h3>
+            <p className="text-sm text-gray-600 mb-4">
+              Manage roles and permissions
+            </p>
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-gray-600">Admin Roles</span>
+              <span className="font-bold text-gray-900">5</span>
+            </div>
+          </Link>
+
+          {/* Team Management */}
+          <Link
+            href="/admin/team"
+            className="bg-white rounded-xl shadow-sm p-6 border border-gray-100 hover:shadow-md transition-all hover:scale-105"
+          >
+            <div className="flex items-center justify-between mb-4">
+              <div className="w-12 h-12 bg-teal-100 rounded-lg flex items-center justify-center">
+                <Users className="w-6 h-6 text-teal-600" />
+              </div>
+              <ArrowRight className="w-5 h-5 text-gray-400" />
+            </div>
+            <h3 className="font-bold text-lg text-gray-900 mb-2">Team</h3>
+            <p className="text-sm text-gray-600 mb-4">
+              Manage admin team members
+            </p>
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-gray-600">Team Size</span>
+              <span className="font-bold text-gray-900">{stats.activeAdmins || 12}</span>
+            </div>
+          </Link>
+
+          {/* System Settings */}
+          <Link
+            href="/admin/system"
+            className="bg-white rounded-xl shadow-sm p-6 border border-gray-100 hover:shadow-md transition-all hover:scale-105"
+          >
+            <div className="flex items-center justify-between mb-4">
+              <div className="w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center">
+                <Settings className="w-6 h-6 text-gray-600" />
+              </div>
+              <ArrowRight className="w-5 h-5 text-gray-400" />
+            </div>
+            <h3 className="font-bold text-lg text-gray-900 mb-2">System</h3>
+            <p className="text-sm text-gray-600 mb-4">
+              Configure system settings
+            </p>
+            <div className="flex items-center gap-2 text-sm">
+              <Activity className="w-4 h-4 text-green-600" />
+              <span className="text-green-600 font-medium">Healthy</span>
+            </div>
+          </Link>
         </div>
       </div>
     </div>
   );
 }
-
