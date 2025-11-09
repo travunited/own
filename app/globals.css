@@ -33,7 +33,19 @@
   }
 
   .input-field {
-    @apply w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition-all;
+    @apply w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition-all bg-white text-gray-900;
+  }
+  
+  /* Fix for all input, textarea, and select elements */
+  input:not([type="checkbox"]):not([type="radio"]),
+  textarea,
+  select {
+    @apply text-gray-900 bg-white;
+  }
+  
+  input::placeholder,
+  textarea::placeholder {
+    @apply text-gray-400;
   }
 
   .card {
