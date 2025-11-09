@@ -33,6 +33,7 @@ export default function RichTextEditor({ content, onChange }: RichTextEditorProp
       }),
     ],
     content,
+    immediatelyRender: false, // Fix SSR hydration mismatch
     onUpdate: ({ editor }) => {
       onChange(editor.getHTML());
     },
