@@ -33,7 +33,7 @@ export async function POST(
       .eq('id', user.id)
       .single();
 
-    if (!profile?.preferences?.role === 'admin') {
+    if (profile?.preferences?.role !== 'admin') {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 403 }

@@ -43,6 +43,10 @@ export default function DocumentVerificationPanel({
   const isPDF = document.type === 'application/pdf';
   const isImage = document.type.startsWith('image/');
 
+  const handleZoomIn = () => setZoom(prev => Math.min(prev + 25, 200));
+  const handleZoomOut = () => setZoom(prev => Math.max(prev - 25, 50));
+  const handleRotate = () => setRotation(prev => (prev + 90) % 360);
+
   const formatFileSize = (bytes: number) => {
     if (bytes < 1024) return bytes + ' B';
     if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
