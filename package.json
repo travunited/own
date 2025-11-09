@@ -16,7 +16,8 @@
     "db:push": "supabase db push",
     "db:reset": "supabase db reset",
     "migrate": "node scripts/run-migrations.js",
-    "setup:db": "node scripts/run-migrations.js"
+    "setup:db": "node scripts/setup-database.js",
+    "db:guide": "node scripts/setup-database.js"
   },
   "dependencies": {
     "@fingerprintjs/fingerprintjs": "^5.0.1",
