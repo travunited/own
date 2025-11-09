@@ -25,6 +25,11 @@ export default function SuperAdminApplicationsPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [showFilters, setShowFilters] = useState(false);
 
+  // Bulk Selection States
+  const [selectedApplications, setSelectedApplications] = useState<string[]>([]);
+  const [showBulkActions, setShowBulkActions] = useState(false);
+  const [bulkProcessing, setBulkProcessing] = useState(false);
+
   // Filter States
   const [selectedStatuses, setSelectedStatuses] = useState<string[]>([]);
   const [selectedCountries, setSelectedCountries] = useState<string[]>([]);
