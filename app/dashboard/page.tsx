@@ -1,283 +1,448 @@
 'use client';
 
-import Link from 'next/link';
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import {
   FileText,
-  Plane,
-  Plus,
+  CreditCard,
   Clock,
   CheckCircle,
   AlertCircle,
-  Users,
+  Plus,
   ArrowRight,
+  Download,
+  Upload,
+  RefreshCw,
+  TrendingUp,
 } from 'lucide-react';
+import Link from 'next/link';
+
+interface Application {
+  id: string;
+  application_number: string;
+  status: string;
+  payment_status: string;
+  created_at: string;
+  visa_type: {
+    name: string;
+    country: {
+      name: string;
+      flag_emoji: string;
+    };
+  };
+}
+
+interface Payment {
+  id: string;
+  amount: number;
+  status: string;
+  created_at: string;
+  invoice_number: string;
+}
+
+interface Document {
+  id: string;
+  document_name: string;
+  verification_status: string;
+  uploaded_at: string;
+}
+
+interface Activity {
+  id: string;
+  title: string;
+  description: string;
+  created_at: string;
+  icon: string;
+}
 
 export default function DashboardPage() {
+  const router = useRouter();
+  const [loading, setLoading] = useState(true);
+  const [applications, setApplications] = useState<Application[]>([]);
+  const [payments, setPayments] = useState<Payment[]>([]);
+  const [documents, setDocuments] = useState<Document[]>([]);
+  const [activities, setActivities] = useState<Activity[]>([]);
+  const [stats, setStats] = useState({
+    activeApplications: 0,
+    completedApplications: 0,
+    pendingDocuments: 0,
+    totalSpent: 0,
+  });
 
-  const stats = [
-    {
-      icon: FileText,
-      label: 'Active Visas',
-      value: '2',
-      color: 'bg-blue-100 text-blue-600',
-    },
-    {
-      icon: Plane,
-      label: 'Upcoming Tours',
-      value: '1',
-      color: 'bg-green-100 text-green-600',
-    },
-    {
-      icon: Clock,
-      label: 'Pending Actions',
-      value: '3',
-      color: 'bg-orange-100 text-orange-600',
-    },
-    {
-      icon: CheckCircle,
-      label: 'Completed',
-      value: '5',
-      color: 'bg-purple-100 text-purple-600',
-    },
-  ];
+  useEffect(() => {
+    loadDashboardData();
+  }, []);
 
-  const recentApplications = [
-    {
-      id: 'TRV12345',
-      type: 'Visa',
-      destination: 'Dubai, UAE',
-      status: 'UNDER_REVIEW',
-      date: '2024-11-01',
-      travelers: 2,
-    },
-    {
-      id: 'TRV12344',
-      type: 'Visa',
-      destination: 'Singapore',
-      status: 'APPROVED',
-      date: '2024-10-28',
-      travelers: 1,
-    },
-    {
-      id: 'TOUR5678',
-      type: 'Tour',
-      destination: 'Maldives',
-      status: 'CONFIRMED',
-      date: '2024-10-25',
-      travelers: 2,
-    },
-  ];
+  const loadDashboardData = async () => {
+    try {
+      setLoading(true);
+      // TODO: Replace with actual API calls
+      // For now, using mock data
+      
+      // Mock applications
+      setApplications([
+        {
+          id: '1',
+          application_number: 'TVU-20250109001',
+          status: 'in_review',
+          payment_status: 'paid',
+          created_at: new Date().toISOString(),
+          visa_type: {
+            name: 'Tourist Visa',
+            country: {
+              name: 'Thailand',
+              flag_emoji: '🇹🇭',
+            },
+          },
+        },
+      ]);
 
-  const pendingActions = [
-    {
-      id: 1,
-      title: 'Upload Missing Document',
-      description: 'Passport copy required for Dubai visa',
-      type: 'urgent',
-      link: '/dashboard/visas/TRV12345',
-    },
-    {
-      id: 2,
-      title: 'Review Tour Itinerary',
-      description: 'Confirm Maldives tour details',
-      type: 'info',
-      link: '/dashboard/tours/TOUR5678',
-    },
-    {
-      id: 3,
-      title: 'Complete Payment',
-      description: 'Pending payment for Singapore visa',
-      type: 'warning',
-      link: '/dashboard/payments',
-    },
-  ];
+      // Mock stats
+      setStats({
+        activeApplications: 2,
+        completedApplications: 5,
+        pendingDocuments: 3,
+        totalSpent: 25000,
+      });
+    } catch (error) {
+      console.error('Error loading dashboard:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const getStatusConfig = (status: string) => {
+    const configs: Record<string, any> = {
+      draft: { color: 'gray', label: 'Draft', icon: FileText },
+      submitted: { color: 'blue', label: 'Submitted', icon: Clock },
+      in_review: { color: 'yellow', label: 'In Review', icon: Clock },
+      approved: { color: 'green', label: 'Approved', icon: CheckCircle },
+      rejected: { color: 'red', label: 'Rejected', icon: AlertCircle },
+    };
+    return configs[status] || configs.draft;
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <RefreshCw className="w-8 h-8 animate-spin text-primary-600 mx-auto mb-4" />
+          <p className="text-gray-600">Loading your dashboard...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="space-y-6">
-      {/* Welcome Section */}
-      <div>
-        <h1 className="text-3xl font-bold text-gray-900">Welcome back, John!</h1>
-        <p className="text-gray-600 mt-1">Here's what's happening with your travel plans</p>
-      </div>
-          {/* Quick Actions */}
-          <div className="grid md:grid-cols-2 gap-4 mb-6">
-            <Link
-              href="/visa-apply"
-              className="card hover:shadow-lg transition-shadow cursor-pointer bg-gradient-to-br from-primary-500 to-primary-600 text-white"
-            >
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="text-lg font-bold mb-1">Apply for New Visa</h3>
-                  <p className="text-sm text-primary-100">
-                    Start a new visa application
-                  </p>
-                </div>
-                <Plus className="w-12 h-12 opacity-50" />
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50">
+      <div className="max-w-7xl mx-auto px-4 py-8">
+        {/* Header */}
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">
+            Welcome back! 👋
+          </h1>
+          <p className="text-gray-600">
+            Here's what's happening with your visa applications
+          </p>
+        </div>
+
+        {/* Stats Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          {/* Active Applications */}
+          <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl p-6 text-white shadow-lg transform transition hover:scale-105">
+            <div className="flex items-center justify-between mb-4">
+              <div className="p-3 bg-white/20 rounded-lg">
+                <FileText className="w-6 h-6" />
               </div>
-            </Link>
-            <Link
-              href="/tours"
-              className="card hover:shadow-lg transition-shadow cursor-pointer bg-gradient-to-br from-green-500 to-green-600 text-white"
-            >
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="text-lg font-bold mb-1">Browse Tour Packages</h3>
-                  <p className="text-sm text-green-100">
-                    Explore curated tours
-                  </p>
-                </div>
-                <Plane className="w-12 h-12 opacity-50" />
-              </div>
-            </Link>
+              <TrendingUp className="w-5 h-5 opacity-75" />
+            </div>
+            <h3 className="text-3xl font-bold mb-1">{stats.activeApplications}</h3>
+            <p className="text-blue-100 text-sm">Active Applications</p>
           </div>
 
-          {/* Stats Cards */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-            {stats.map((stat) => {
-              const Icon = stat.icon;
-              return (
-                <div key={stat.label} className="card">
-                  <div className="flex items-center justify-between mb-2">
-                    <div className={`p-2 rounded-lg ${stat.color}`}>
-                      <Icon className="w-6 h-6" />
-                    </div>
-                  </div>
-                  <p className="text-2xl font-bold text-gray-900">{stat.value}</p>
-                  <p className="text-sm text-gray-600">{stat.label}</p>
-                </div>
-              );
-            })}
+          {/* Completed */}
+          <div className="bg-gradient-to-br from-green-500 to-green-600 rounded-xl p-6 text-white shadow-lg transform transition hover:scale-105">
+            <div className="flex items-center justify-between mb-4">
+              <div className="p-3 bg-white/20 rounded-lg">
+                <CheckCircle className="w-6 h-6" />
+              </div>
+              <span className="text-xs bg-white/20 px-2 py-1 rounded-full">
+                All time
+              </span>
+            </div>
+            <h3 className="text-3xl font-bold mb-1">{stats.completedApplications}</h3>
+            <p className="text-green-100 text-sm">Completed</p>
           </div>
 
-          <div className="grid lg:grid-cols-3 gap-6">
-            {/* Recent Applications */}
-            <div className="lg:col-span-2">
-              <div className="card">
-                <div className="flex items-center justify-between mb-6">
-                  <h2 className="text-xl font-bold text-gray-900">
-                    Recent Applications
-                  </h2>
-                  <Link href="/dashboard/visas" className="text-primary-600 text-sm font-medium">
-                    View All →
+          {/* Pending Documents */}
+          <div className="bg-gradient-to-br from-orange-500 to-orange-600 rounded-xl p-6 text-white shadow-lg transform transition hover:scale-105">
+            <div className="flex items-center justify-between mb-4">
+              <div className="p-3 bg-white/20 rounded-lg">
+                <Upload className="w-6 h-6" />
+              </div>
+              <AlertCircle className="w-5 h-5 opacity-75" />
+            </div>
+            <h3 className="text-3xl font-bold mb-1">{stats.pendingDocuments}</h3>
+            <p className="text-orange-100 text-sm">Pending Documents</p>
+          </div>
+
+          {/* Total Spent */}
+          <div className="bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl p-6 text-white shadow-lg transform transition hover:scale-105">
+            <div className="flex items-center justify-between mb-4">
+              <div className="p-3 bg-white/20 rounded-lg">
+                <CreditCard className="w-6 h-6" />
+              </div>
+            </div>
+            <h3 className="text-3xl font-bold mb-1">
+              ₹{stats.totalSpent.toLocaleString('en-IN')}
+            </h3>
+            <p className="text-purple-100 text-sm">Total Spent</p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Main Content - Left Column */}
+          <div className="lg:col-span-2 space-y-6">
+            {/* Active Applications */}
+            <div className="bg-white rounded-xl shadow-md p-6">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-xl font-bold text-gray-900">Active Applications</h2>
+                <Link href="/visas" className="btn-primary text-sm">
+                  <Plus className="w-4 h-4 mr-1" />
+                  New Application
+                </Link>
+              </div>
+
+              {applications.length === 0 ? (
+                <div className="text-center py-12">
+                  <FileText className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                    No active applications
+                  </h3>
+                  <p className="text-gray-600 mb-6">
+                    Start your visa application journey today
+                  </p>
+                  <Link href="/visas" className="btn-primary">
+                    <Plus className="w-5 h-5 mr-2" />
+                    Apply for Visa
                   </Link>
                 </div>
-
+              ) : (
                 <div className="space-y-4">
-                  {recentApplications.map((app) => (
-                    <div
-                      key={app.id}
-                      className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow"
-                    >
-                      <div className="flex items-start justify-between mb-2">
-                        <div className="flex-1">
-                          <div className="flex items-center mb-1">
-                            <span className="font-bold text-gray-900 mr-2">
-                              {app.id}
-                            </span>
-                            <span
-                              className={`badge text-xs ${
-                                app.status === 'APPROVED'
-                                  ? 'bg-green-100 text-green-800'
-                                  : app.status === 'UNDER_REVIEW'
-                                  ? 'bg-blue-100 text-blue-800'
-                                  : 'bg-gray-100 text-gray-800'
-                              }`}
-                            >
-                              {app.status.replace('_', ' ')}
-                            </span>
+                  {applications.map((app) => {
+                    const statusConfig = getStatusConfig(app.status);
+                    const StatusIcon = statusConfig.icon;
+
+                    return (
+                      <div
+                        key={app.id}
+                        className="border border-gray-200 rounded-lg p-4 hover:border-primary-300 hover:shadow-md transition-all cursor-pointer"
+                        onClick={() => router.push(`/dashboard/applications/${app.id}`)}
+                      >
+                        <div className="flex items-start justify-between">
+                          <div className="flex items-start space-x-4">
+                            <div className="text-4xl">{app.visa_type.country.flag_emoji}</div>
+                            <div>
+                              <h3 className="font-semibold text-gray-900 mb-1">
+                                {app.visa_type.country.name} - {app.visa_type.name}
+                              </h3>
+                              <p className="text-sm text-gray-600 mb-2">
+                                Application #{app.application_number}
+                              </p>
+                              <div className="flex items-center space-x-3">
+                                <span
+                                  className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-${statusConfig.color}-100 text-${statusConfig.color}-800`}
+                                >
+                                  <StatusIcon className="w-3 h-3 mr-1" />
+                                  {statusConfig.label}
+                                </span>
+                                {app.payment_status === 'paid' && (
+                                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                    <CheckCircle className="w-3 h-3 mr-1" />
+                                    Paid
+                                  </span>
+                                )}
+                              </div>
+                            </div>
                           </div>
-                          <p className="text-sm text-gray-600 mb-1">
-                            {app.destination}
-                          </p>
-                          <div className="flex items-center text-xs text-gray-500">
-                            <Users className="w-3 h-3 mr-1" />
-                            <span>{app.travelers} Traveller(s)</span>
-                            <span className="mx-2">•</span>
-                            <span>{new Date(app.date).toLocaleDateString()}</span>
-                          </div>
+                          <ArrowRight className="w-5 h-5 text-gray-400" />
                         </div>
-                        <Link
-                          href={`/dashboard/${app.type.toLowerCase()}s/${app.id}`}
-                          className="text-primary-600 text-sm font-medium hover:text-primary-700"
-                        >
-                          View →
-                        </Link>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* Recent Activity */}
+            <div className="bg-white rounded-xl shadow-md p-6">
+              <h2 className="text-xl font-bold text-gray-900 mb-6">Recent Activity</h2>
+              
+              <div className="space-y-4">
+                {activities.length === 0 ? (
+                  <div className="text-center py-8 text-gray-500">
+                    <Clock className="w-12 h-12 text-gray-300 mx-auto mb-2" />
+                    <p>No recent activity</p>
+                  </div>
+                ) : (
+                  activities.map((activity) => (
+                    <div key={activity.id} className="flex items-start space-x-4 pb-4 border-b border-gray-100 last:border-0">
+                      <div className="p-2 bg-primary-100 rounded-lg">
+                        <FileText className="w-4 h-4 text-primary-600" />
+                      </div>
+                      <div className="flex-1">
+                        <h4 className="font-medium text-gray-900">{activity.title}</h4>
+                        <p className="text-sm text-gray-600">{activity.description}</p>
+                        <p className="text-xs text-gray-400 mt-1">
+                          {new Date(activity.created_at).toLocaleString()}
+                        </p>
                       </div>
                     </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            {/* Pending Actions */}
-            <div>
-              <div className="card">
-                <h2 className="text-xl font-bold text-gray-900 mb-6">
-                  Pending Actions
-                </h2>
-
-                <div className="space-y-4">
-                  {pendingActions.map((action) => (
-                    <div
-                      key={action.id}
-                      className={`border-l-4 rounded p-3 ${
-                        action.type === 'urgent'
-                          ? 'border-red-500 bg-red-50'
-                          : action.type === 'warning'
-                          ? 'border-orange-500 bg-orange-50'
-                          : 'border-blue-500 bg-blue-50'
-                      }`}
-                    >
-                      <h3 className="font-bold text-sm text-gray-900 mb-1">
-                        {action.title}
-                      </h3>
-                      <p className="text-xs text-gray-600 mb-2">
-                        {action.description}
-                      </p>
-                      <Link
-                        href={action.link}
-                        className="text-xs font-medium text-primary-600 hover:text-primary-700"
-                      >
-                        Take Action →
-                      </Link>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Quick Links */}
-              <div className="card mt-6">
-                <h3 className="font-bold text-lg mb-4">Quick Links</h3>
-                <div className="space-y-2">
-                  <Link
-                    href="/track"
-                    className="block text-sm text-gray-700 hover:text-primary-600"
-                  >
-                    → Track Application
-                  </Link>
-                  <Link
-                    href="/dashboard/support"
-                    className="block text-sm text-gray-700 hover:text-primary-600"
-                  >
-                    → Contact Support
-                  </Link>
-                  <Link
-                    href="/dashboard/travellers"
-                    className="block text-sm text-gray-700 hover:text-primary-600"
-                  >
-                    → Manage Travellers
-                  </Link>
-                  <Link
-                    href="/dashboard/payments"
-                    className="block text-sm text-gray-700 hover:text-primary-600"
-                  >
-                    → Payment History
-                  </Link>
-                </div>
+                  ))
+                )}
               </div>
             </div>
           </div>
+
+          {/* Right Sidebar */}
+          <div className="space-y-6">
+            {/* Quick Actions */}
+            <div className="bg-white rounded-xl shadow-md p-6">
+              <h2 className="text-xl font-bold text-gray-900 mb-4">Quick Actions</h2>
+              
+              <div className="space-y-3">
+                <Link
+                  href="/visas"
+                  className="flex items-center p-3 bg-gradient-to-r from-primary-50 to-blue-50 rounded-lg hover:from-primary-100 hover:to-blue-100 transition-colors group"
+                >
+                  <div className="p-2 bg-primary-600 rounded-lg mr-3">
+                    <Plus className="w-5 h-5 text-white" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="font-medium text-gray-900">New Application</p>
+                    <p className="text-xs text-gray-600">Start visa process</p>
+                  </div>
+                  <ArrowRight className="w-5 h-5 text-gray-400 group-hover:text-primary-600 transition-colors" />
+                </Link>
+
+                <Link
+                  href="/dashboard/documents"
+                  className="flex items-center p-3 bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg hover:from-green-100 hover:to-emerald-100 transition-colors group"
+                >
+                  <div className="p-2 bg-green-600 rounded-lg mr-3">
+                    <Upload className="w-5 h-5 text-white" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="font-medium text-gray-900">Upload Documents</p>
+                    <p className="text-xs text-gray-600">Add required files</p>
+                  </div>
+                  <ArrowRight className="w-5 h-5 text-gray-400 group-hover:text-green-600 transition-colors" />
+                </Link>
+
+                <Link
+                  href="/dashboard/payments"
+                  className="flex items-center p-3 bg-gradient-to-r from-purple-50 to-pink-50 rounded-lg hover:from-purple-100 hover:to-pink-100 transition-colors group"
+                >
+                  <div className="p-2 bg-purple-600 rounded-lg mr-3">
+                    <CreditCard className="w-5 h-5 text-white" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="font-medium text-gray-900">Payment History</p>
+                    <p className="text-xs text-gray-600">View transactions</p>
+                  </div>
+                  <ArrowRight className="w-5 h-5 text-gray-400 group-hover:text-purple-600 transition-colors" />
+                </Link>
+
+                <Link
+                  href="/support"
+                  className="flex items-center p-3 bg-gradient-to-r from-orange-50 to-yellow-50 rounded-lg hover:from-orange-100 hover:to-yellow-100 transition-colors group"
+                >
+                  <div className="p-2 bg-orange-600 rounded-lg mr-3">
+                    <AlertCircle className="w-5 h-5 text-white" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="font-medium text-gray-900">Get Support</p>
+                    <p className="text-xs text-gray-600">Need help?</p>
+                  </div>
+                  <ArrowRight className="w-5 h-5 text-gray-400 group-hover:text-orange-600 transition-colors" />
+                </Link>
+              </div>
+            </div>
+
+            {/* Document Status */}
+            <div className="bg-white rounded-xl shadow-md p-6">
+              <h2 className="text-xl font-bold text-gray-900 mb-4">Document Status</h2>
+              
+              {documents.length === 0 ? (
+                <div className="text-center py-8">
+                  <Upload className="w-12 h-12 text-gray-300 mx-auto mb-2" />
+                  <p className="text-sm text-gray-600">No documents uploaded yet</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {documents.map((doc) => (
+                    <div key={doc.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                      <div className="flex items-center space-x-3">
+                        <FileText className="w-5 h-5 text-gray-400" />
+                        <div>
+                          <p className="text-sm font-medium text-gray-900">{doc.document_name}</p>
+                          <p className="text-xs text-gray-500">
+                            {new Date(doc.uploaded_at).toLocaleDateString()}
+                          </p>
+                        </div>
+                      </div>
+                      {doc.verification_status === 'verified' ? (
+                        <CheckCircle className="w-5 h-5 text-green-500" />
+                      ) : (
+                        <Clock className="w-5 h-5 text-yellow-500" />
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Payment History Summary */}
+            <div className="bg-white rounded-xl shadow-md p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-xl font-bold text-gray-900">Recent Payments</h2>
+                <Link href="/dashboard/payments" className="text-sm text-primary-600 hover:text-primary-700">
+                  View All
+                </Link>
+              </div>
+              
+              {payments.length === 0 ? (
+                <div className="text-center py-8">
+                  <CreditCard className="w-12 h-12 text-gray-300 mx-auto mb-2" />
+                  <p className="text-sm text-gray-600">No payments yet</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {payments.map((payment) => (
+                    <div key={payment.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                      <div>
+                        <p className="text-sm font-medium text-gray-900">
+                          ₹{(payment.amount / 100).toLocaleString('en-IN')}
+                        </p>
+                        <p className="text-xs text-gray-500">{payment.invoice_number}</p>
+                      </div>
+                      {payment.status === 'captured' ? (
+                        <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full font-medium">
+                          Paid
+                        </span>
+                      ) : (
+                        <span className="text-xs bg-yellow-100 text-yellow-700 px-2 py-1 rounded-full font-medium">
+                          Pending
+                        </span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
-
