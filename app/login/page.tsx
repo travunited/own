@@ -1,85 +1,227 @@
 'use client';
 
 import { useState } from 'react';
-import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
+import { Mail, Lock, Eye, EyeOff, AlertCircle, Loader2, Shield, User as UserIcon } from 'lucide-react';
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import MFAInput from '@/components/auth/MFAInput';
-import { Mail, Lock, AlertCircle } from 'lucide-react';
 
 export default function LoginPage() {
   const router = useRouter();
+  const supabase = createClientComponentClient();
+
   const [formData, setFormData] = useState({
     email: '',
     password: '',
-    rememberMe: false,
   });
   const [mfaCode, setMfaCode] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [requiresMFA, setRequiresMFA] = useState(false);
+  const [requireMFA, setRequireMFA] = useState(false);
+  const [tempUserId, setTempUserId] = useState<string | null>(null);
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setFormData({ ...formData, [e.target.name]: e.target.value });
+    setError('');
+  };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
     setLoading(true);
+    setError('');
 
     try {
-      const response = await fetch('/api/auth/login', {
+      // Step 1: Sign in with email/password
+      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+        email: formData.email,
+        password: formData.password,
+      });
+
+      if (authError) throw authError;
+
+      if (!authData.user) {
+        throw new Error('Login failed');
+      }
+
+      // Step 2: Check if user has MFA enabled
+      const { data: mfaData } = await supabase
+        .from('user_mfa')
+        .select('enabled')
+        .eq('user_id', authData.user.id)
+        .single();
+
+      if (mfaData?.enabled) {
+        // Require MFA code
+        setRequireMFA(true);
+        setTempUserId(authData.user.id);
+        setLoading(false);
+        return;
+      }
+
+      // Step 3: Get user role and redirect
+      await handleSuccessfulLogin(authData.user.id);
+    } catch (err: any) {
+      setError(err.message || 'Login failed. Please try again.');
+      setLoading(false);
+    }
+  };
+
+  const handleMFAVerification = async (code: string) => {
+    setLoading(true);
+    setError('');
+
+    try {
+      // Verify MFA code
+      const response = await fetch('/api/auth/mfa/verify', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email: formData.email,
-          password: formData.password,
-          rememberMe: formData.rememberMe,
-          mfaCode: requiresMFA ? mfaCode : undefined,
-        }),
+        body: JSON.stringify({ code }),
       });
 
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || 'Login failed');
+        throw new Error(data.error || 'Invalid MFA code');
       }
 
-      // Check if MFA is required
-      if (data.requiresMFA && !requiresMFA) {
-        setRequiresMFA(true);
-        setLoading(false);
-        return;
-      }
-
-      // Login successful
-      router.push('/dashboard');
+      // Login successful with MFA
+      await handleSuccessfulLogin(tempUserId!);
     } catch (err: any) {
-      setError(err.message || 'An error occurred');
+      setError(err.message || 'MFA verification failed');
       setLoading(false);
     }
   };
 
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-primary-600 to-primary-700 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-8">
-        {/* Logo */}
-        <div className="text-center mb-8">
-          <Link href="/" className="text-3xl font-bold text-primary-600">
-            Travunited
-          </Link>
-          <h2 className="text-2xl font-bold text-gray-900 mt-4">Welcome Back</h2>
-          <p className="text-gray-600 mt-2">
-            {requiresMFA ? 'Enter your authentication code' : 'Sign in to your account'}
-          </p>
-        </div>
+  const handleSuccessfulLogin = async (userId: string) => {
+    try {
+      // Get user role
+      const { data: profile } = await supabase
+        .from('user_profiles')
+        .select('role, preferences')
+        .eq('id', userId)
+        .single();
 
-        {error && (
-          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg flex items-start">
-            <AlertCircle className="w-5 h-5 text-red-600 mr-2 flex-shrink-0 mt-0.5" />
-            <p className="text-sm text-red-600">{error}</p>
+      const role = profile?.role || profile?.preferences?.role || 'user';
+
+      // Redirect based on role
+      const redirectRoutes: Record<string, string> = {
+        super_admin: '/super-admin',
+        admin: '/admin',
+        sub_admin: '/admin',
+        regional_admin: '/regional-admin',
+        maintenance_admin: '/maintenance',
+        user: '/dashboard',
+      };
+
+      const redirectTo = redirectRoutes[role] || '/dashboard';
+      router.push(redirectTo);
+    } catch (err: any) {
+      console.error('Error getting user role:', err);
+      // Default to user dashboard
+      router.push('/dashboard');
+    }
+  };
+
+  if (requireMFA) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-primary-50 to-purple-50 flex items-center justify-center p-4">
+        <div className="w-full max-w-md">
+          <div className="bg-white rounded-2xl shadow-2xl p-8">
+            <div className="text-center mb-8">
+              <div className="inline-flex items-center justify-center w-16 h-16 bg-primary-100 rounded-full mb-4">
+                <Shield className="w-8 h-8 text-primary-600" />
+              </div>
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">
+                Two-Factor Authentication
+              </h2>
+              <p className="text-gray-600">
+                Enter the 6-digit code from your authenticator app
+              </p>
+            </div>
+
+            {error && (
+              <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg flex items-start">
+                <AlertCircle className="w-5 h-5 text-red-500 mr-2 flex-shrink-0 mt-0.5" />
+                <p className="text-sm text-red-800">{error}</p>
+              </div>
+            )}
+
+            <MFAInput
+              length={6}
+              value={mfaCode}
+              onChange={setMfaCode}
+              onComplete={handleMFAVerification}
+              disabled={loading}
+            />
+
+            <button
+              onClick={() => {
+                setRequireMFA(false);
+                setTempUserId(null);
+                setError('');
+              }}
+              className="w-full mt-4 text-sm text-gray-600 hover:text-gray-900"
+            >
+              ← Back to login
+            </button>
           </div>
-        )}
+        </div>
+      </div>
+    );
+  }
 
-        {!requiresMFA ? (
-          /* Login Form */
-          <form onSubmit={handleLogin} className="space-y-4">
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-primary-50 to-purple-50 flex items-center justify-center p-4">
+      <div className="w-full max-w-md">
+        <div className="bg-white rounded-2xl shadow-2xl p-8">
+          {/* Header */}
+          <div className="text-center mb-8">
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">
+              Welcome Back
+            </h1>
+            <p className="text-gray-600">
+              Sign in to access your dashboard
+            </p>
+          </div>
+
+          {/* Role Badges Info */}
+          <div className="mb-6 p-4 bg-gradient-to-r from-primary-50 to-purple-50 rounded-lg">
+            <p className="text-sm text-gray-700 mb-2 font-medium">
+              Login redirects to:
+            </p>
+            <div className="grid grid-cols-2 gap-2 text-xs">
+              <div className="flex items-center gap-1">
+                <Shield className="w-3 h-3 text-red-600" />
+                <span>Super Admin → /super-admin</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <Shield className="w-3 h-3 text-purple-600" />
+                <span>Admin → /admin</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <Shield className="w-3 h-3 text-indigo-600" />
+                <span>Regional → /regional-admin</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <UserIcon className="w-3 h-3 text-gray-600" />
+                <span>User → /dashboard</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Error Message */}
+          {error && (
+            <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg flex items-start">
+              <AlertCircle className="w-5 h-5 text-red-500 mr-2 flex-shrink-0 mt-0.5" />
+              <p className="text-sm text-red-800">{error}</p>
+            </div>
+          )}
+
+          {/* Login Form */}
+          <form onSubmit={handleLogin} className="space-y-6">
+            {/* Email */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Email Address
@@ -88,16 +230,17 @@ export default function LoginPage() {
                 <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
                 <input
                   type="email"
+                  name="email"
                   value={formData.email}
-                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  onChange={handleChange}
                   className="input-field pl-10"
-                  placeholder="you@example.com"
+                  placeholder="your.email@example.com"
                   required
-                  disabled={loading}
                 />
               </div>
             </div>
 
+            {/* Password */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Password
@@ -105,32 +248,40 @@ export default function LoginPage() {
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
                 <input
-                  type="password"
+                  type={showPassword ? 'text' : 'password'}
+                  name="password"
                   value={formData.password}
-                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                  className="input-field pl-10"
-                  placeholder="••••••••"
+                  onChange={handleChange}
+                  className="input-field pl-10 pr-10"
+                  placeholder="Enter your password"
                   required
-                  disabled={loading}
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                >
+                  {showPassword ? (
+                    <EyeOff className="w-5 h-5" />
+                  ) : (
+                    <Eye className="w-5 h-5" />
+                  )}
+                </button>
               </div>
             </div>
 
+            {/* Forgot Password */}
             <div className="flex items-center justify-between">
               <div className="flex items-center">
                 <input
                   type="checkbox"
-                  id="rememberMe"
-                  checked={formData.rememberMe}
-                  onChange={(e) => setFormData({ ...formData, rememberMe: e.target.checked })}
-                  className="mr-2"
-                  disabled={loading}
+                  id="remember"
+                  className="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
                 />
-                <label htmlFor="rememberMe" className="text-sm text-gray-600">
+                <label htmlFor="remember" className="ml-2 text-sm text-gray-600">
                   Remember me
                 </label>
               </div>
-
               <Link
                 href="/forgot-password"
                 className="text-sm text-primary-600 hover:text-primary-700 font-medium"
@@ -139,89 +290,41 @@ export default function LoginPage() {
               </Link>
             </div>
 
+            {/* Submit Button */}
             <button
               type="submit"
-              className="btn-primary w-full disabled:opacity-50 disabled:cursor-not-allowed"
               disabled={loading}
+              className="w-full bg-gradient-to-r from-primary-600 to-purple-600 hover:from-primary-700 hover:to-purple-700 text-white font-semibold py-3 px-4 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
             >
-              {loading ? 'Signing in...' : 'Sign In'}
+              {loading ? (
+                <>
+                  <Loader2 className="w-5 h-5 animate-spin mr-2" />
+                  Signing in...
+                </>
+              ) : (
+                'Sign In'
+              )}
             </button>
           </form>
-        ) : (
-          /* MFA Form */
-          <form onSubmit={handleLogin} className="space-y-6">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-4 text-center">
-                Enter Authentication Code
-              </label>
-              <MFAInput
-                value={mfaCode}
-                onChange={setMfaCode}
-                onComplete={(code) => {
-                  setMfaCode(code);
-                  // Auto-submit when complete
-                  setTimeout(() => {
-                    const form = document.querySelector('form');
-                    if (form) form.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
-                  }, 100);
-                }}
-                disabled={loading}
-                error={!!error}
-              />
-              <p className="text-sm text-gray-600 text-center mt-4">
-                Open your authenticator app and enter the 6-digit code
-              </p>
-            </div>
 
-            <button
-              type="submit"
-              className="btn-primary w-full disabled:opacity-50 disabled:cursor-not-allowed"
-              disabled={loading || mfaCode.length !== 6}
+          {/* Signup Link */}
+          <p className="mt-6 text-center text-sm text-gray-600">
+            Don't have an account?{' '}
+            <Link
+              href="/signup"
+              className="text-primary-600 hover:text-primary-700 font-semibold"
             >
-              {loading ? 'Verifying...' : 'Verify & Sign In'}
-            </button>
-
-            <button
-              type="button"
-              onClick={() => {
-                setRequiresMFA(false);
-                setMfaCode('');
-                setError('');
-              }}
-              className="w-full text-center text-sm text-gray-600 hover:text-primary-600"
-            >
-              Back to login
-            </button>
-
-            <div className="text-center">
-              <p className="text-sm text-gray-600 mb-2">Lost access to your authenticator?</p>
-              <button
-                type="button"
-                className="text-sm text-primary-600 hover:text-primary-700 font-medium"
-              >
-                Use backup code
-              </button>
-            </div>
-          </form>
-        )}
-
-        {/* Divider */}
-        <div className="relative my-6">
-          <div className="absolute inset-0 flex items-center">
-            <div className="w-full border-t border-gray-300"></div>
-          </div>
-          <div className="relative flex justify-center text-sm">
-            <span className="px-2 bg-white text-gray-500">or</span>
-          </div>
+              Create account
+            </Link>
+          </p>
         </div>
 
-        {/* Signup Link */}
-        <p className="text-center text-gray-600">
-          Don't have an account?{' '}
-          <Link href="/signup" className="text-primary-600 hover:text-primary-700 font-medium">
-            Sign up
-          </Link>
-        </p>
+        {/* Admin Note */}
+        <div className="mt-6 text-center">
+          <p className="text-sm text-gray-600">
+            🔐 Admin credentials: travunited3@gmail.com / Marigudi@9
+          </p>
+        </div>
       </div>
     </div>
   );
