@@ -59,49 +59,46 @@ export default function AdminDashboard() {
 
   const loadDashboardData = async () => {
     try {
-      // TODO: Replace with actual API call
-      const mockApplications: Application[] = [
-        {
-          id: '1',
-          application_number: 'TVU-20250109-00001',
-          status: 'under_review',
-          payment_status: 'paid',
-          created_at: new Date().toISOString(),
-          user_name: 'John Doe',
-          user_email: 'john@example.com',
-          visa_type: 'Tourist Visa',
-          country: 'Thailand',
-          flag_emoji: '🇹🇭',
-          pending_documents: 2,
-          admin_notes: null,
-          last_updated: new Date().toISOString(),
-        },
-        {
-          id: '2',
-          application_number: 'TVU-20250109-00002',
-          status: 'documents_submitted',
-          payment_status: 'paid',
-          created_at: new Date().toISOString(),
-          user_name: 'Jane Smith',
-          user_email: 'jane@example.com',
-          visa_type: 'Business Visa',
-          country: 'Singapore',
-          flag_emoji: '🇸🇬',
-          pending_documents: 0,
-          admin_notes: 'Passport expires soon',
-          last_updated: new Date().toISOString(),
-        },
-      ];
+      // Fetch stats from API
+      const statsResponse = await fetch('/api/admin/dashboard/stats');
+      if (statsResponse.ok) {
+        const statsData = await statsResponse.json();
+        setStats({
+          pendingReview: statsData.stats?.pendingReview || 0,
+          documentsToVerify: statsData.stats?.documentsToVerify || 0,
+          supportTickets: statsData.stats?.supportTickets || 0,
+          approvedToday: statsData.stats?.approvedToday || 0,
+        });
+      }
 
-      setApplications(mockApplications);
-      setStats({
-        pendingReview: 15,
-        documentsToVerify: 23,
-        supportTickets: 8,
-        approvedToday: 12,
-      });
+      // Fetch applications from API
+      const appsResponse = await fetch('/api/admin/applications?status=all&limit=50');
+      if (appsResponse.ok) {
+        const appsData = await appsResponse.json();
+        
+        // Transform data to match component interface
+        const transformedApps = (appsData.applications || []).map((app: any) => ({
+          id: app.id,
+          application_number: app.application_number,
+          status: app.status,
+          payment_status: app.payment_status,
+          created_at: app.created_at,
+          user_name: app.user?.full_name || app.user?.username || 'Unknown',
+          user_email: app.user?.email || 'N/A',
+          visa_type: app.visa_type?.name || 'N/A',
+          country: app.visa_type?.country?.name || 'N/A',
+          flag_emoji: app.visa_type?.country?.flag_emoji || '🌍',
+          pending_documents: app.pending_documents || 0,
+          admin_notes: null,
+          last_updated: app.updated_at,
+        }));
+        
+        setApplications(transformedApps);
+      }
     } catch (error) {
       console.error('Error loading dashboard:', error);
+      // Keep empty arrays on error
+      setApplications([]);
     } finally {
       setLoading(false);
     }
@@ -402,19 +399,19 @@ export default function AdminDashboard() {
                           <div className="flex items-center gap-2">
                             <button
                               onClick={() =>
-                                router.push(`/admin/applications/${app.id}`)
+                                router.push(`/admin/applications/${app.id}/review`)
                               }
                               className="text-primary-600 hover:text-primary-900 p-2 hover:bg-primary-50 rounded-lg transition-colors"
-                              title="View Details"
+                              title="Review Application"
                             >
                               <Eye className="w-4 h-4" />
                             </button>
                             <button
                               onClick={() =>
-                                router.push(`/admin/applications/${app.id}/edit`)
+                                router.push(`/dashboard/applications/${app.id}`)
                               }
                               className="text-blue-600 hover:text-blue-900 p-2 hover:bg-blue-50 rounded-lg transition-colors"
-                              title="Edit"
+                              title="View Details"
                             >
                               <Edit className="w-4 h-4" />
                             </button>

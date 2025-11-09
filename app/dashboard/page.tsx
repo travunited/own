@@ -76,36 +76,37 @@ export default function DashboardPage() {
   const loadDashboardData = async () => {
     try {
       setLoading(true);
-      // TODO: Replace with actual API calls
-      // For now, using mock data
       
-      // Mock applications
-      setApplications([
-        {
-          id: '1',
-          application_number: 'TVU-20250109001',
-          status: 'in_review',
-          payment_status: 'paid',
-          created_at: new Date().toISOString(),
-          visa_type: {
-            name: 'Tourist Visa',
-            country: {
-              name: 'Thailand',
-              flag_emoji: '🇹🇭',
-            },
-          },
-        },
-      ]);
-
-      // Mock stats
+      // Fetch real dashboard data from API
+      const response = await fetch('/api/dashboard/stats');
+      if (!response.ok) {
+        throw new Error('Failed to load dashboard data');
+      }
+      
+      const data = await response.json();
+      
+      // Set applications
+      setApplications(data.applications || []);
+      
+      // Set stats
       setStats({
-        activeApplications: 2,
-        completedApplications: 5,
-        pendingDocuments: 3,
-        totalSpent: 25000,
+        activeApplications: data.stats?.activeApplications || 0,
+        completedApplications: data.stats?.completedApplications || 0,
+        pendingDocuments: data.stats?.pendingDocuments || 0,
+        totalSpent: data.stats?.totalSpent || 0,
       });
+      
+      // Set activities
+      setActivities(data.activities || []);
+      
+      // Set payments
+      setPayments(data.payments || []);
     } catch (error) {
       console.error('Error loading dashboard:', error);
+      // Keep empty arrays on error
+      setApplications([]);
+      setActivities([]);
+      setPayments([]);
     } finally {
       setLoading(false);
     }
