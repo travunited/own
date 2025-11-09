@@ -1,6 +1,7 @@
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import Link from 'next/link';
+import ShareButton from '@/components/social/ShareButton';
 import {
   Calendar,
   Users,
@@ -204,6 +205,21 @@ export default async function TourDetailPage({ params }: PageProps) {
               <button className="btn-outline w-full mt-3">
                 Enquire Now
               </button>
+
+              {/* Share Tour */}
+              <div className="mt-4 pt-4 border-t border-gray-200">
+                <p className="text-sm text-gray-600 mb-3 text-center">
+                  Love this tour? Share with friends!
+                </p>
+                <ShareButton
+                  title={`Check out this amazing ${tour.destination} tour!`}
+                  description={`${tour.duration.days} days, ${tour.duration.nights} nights. ${tour.highlights.join(', ')}. Starting at ₹${tour.price.toLocaleString('en-IN')}`}
+                  url={`/tours/${slug}`}
+                  hashtags={[tour.destination.replace(/,.*/, ''), 'TravelGoals', 'Travunited']}
+                  variant="secondary"
+                  className="w-full"
+                />
+              </div>
             </div>
           </div>
         </div>

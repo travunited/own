@@ -1,6 +1,7 @@
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import Link from 'next/link';
+import ShareButton from '@/components/social/ShareButton';
 import { Calendar, User, Clock, Tag, Share2, Facebook, Twitter, Linkedin, ArrowLeft, ArrowRight } from 'lucide-react';
 
 interface PageProps {
@@ -192,18 +193,14 @@ export default async function BlogPostPage({ params }: PageProps) {
             {/* Share Buttons */}
             <div className="flex items-center space-x-3">
               <span className="text-sm font-medium text-gray-700">Share:</span>
-              <button className="p-2 bg-blue-600 text-white rounded hover:bg-blue-700">
-                <Facebook className="w-4 h-4" />
-              </button>
-              <button className="p-2 bg-sky-500 text-white rounded hover:bg-sky-600">
-                <Twitter className="w-4 h-4" />
-              </button>
-              <button className="p-2 bg-blue-700 text-white rounded hover:bg-blue-800">
-                <Linkedin className="w-4 h-4" />
-              </button>
-              <button className="p-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300">
-                <Share2 className="w-4 h-4" />
-              </button>
+              <ShareButton
+                title={post.title}
+                description={post.excerpt}
+                url={`/blog/${post.slug}`}
+                hashtags={post.tags}
+                variant="icon"
+                size="sm"
+              />
             </div>
           </header>
 
@@ -213,8 +210,29 @@ export default async function BlogPostPage({ params }: PageProps) {
             dangerouslySetInnerHTML={{ __html: post.content }}
           />
 
+          {/* Share at Bottom */}
+          <div className="mt-12 p-6 bg-gradient-to-br from-gray-50 to-blue-50 rounded-xl border border-gray-200">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="font-bold text-lg text-gray-900 mb-1">
+                  Found this helpful?
+                </h3>
+                <p className="text-sm text-gray-600">
+                  Share with friends who might need this information
+                </p>
+              </div>
+              <ShareButton
+                title={post.title}
+                description={post.excerpt}
+                url={`/blog/${post.slug}`}
+                hashtags={post.tags}
+                variant="primary"
+              />
+            </div>
+          </div>
+
           {/* CTA */}
-          <div className="mt-12 bg-primary-50 rounded-xl p-8 text-center">
+          <div className="mt-8 bg-primary-50 rounded-xl p-8 text-center">
             <h3 className="text-2xl font-bold text-gray-900 mb-2">
               Ready to Apply for Your Dubai Visa?
             </h3>

@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { CheckCircle, Download, Home, FileText, MessageSquare } from 'lucide-react';
+import ShareButton from '@/components/social/ShareButton';
 
 export default function VisaApplicationSuccess() {
   // Get application ID from URL params
@@ -103,6 +104,24 @@ export default function VisaApplicationSuccess() {
               <MessageSquare className="w-5 h-5 mr-2" />
               Contact Support
             </Link>
+          </div>
+
+          {/* Share Success */}
+          <div className="mt-8 p-6 bg-gradient-to-br from-primary-50 to-purple-50 rounded-xl border border-primary-200">
+            <h3 className="font-bold text-lg text-gray-900 mb-2">
+              🎉 Share your success!
+            </h3>
+            <p className="text-sm text-gray-600 mb-4">
+              Help your friends get their visa too! Share and both of you get ₹500 discount
+            </p>
+            <ShareButton
+              title="I just got my visa through Travunited! ✈️"
+              description="Applied online, super easy process! Got approved in just a few days. Highly recommend Travunited for hassle-free visa processing."
+              url="https://travunited.com"
+              hashtags={['Travunited', 'VisaApproved', 'TravelMadeEasy']}
+              variant="primary"
+              className="w-full"
+            />
           </div>
         </div>
 
