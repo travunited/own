@@ -3,7 +3,7 @@
  * Device detection, fingerprinting, and trusted device management
  */
 
-import UAParser from 'ua-parser-js';
+import { UAParser } from 'ua-parser-js';
 
 export interface DeviceInfo {
   fingerprint: string;
