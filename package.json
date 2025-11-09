@@ -7,7 +7,16 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "supabase": "supabase",
+    "supabase:login": "supabase login",
+    "supabase:link": "supabase link --project-ref esbzzprfghkcigvyuiw",
+    "supabase:status": "supabase status",
+    "supabase:types": "supabase gen types typescript --project-id esbzzprfghkcigvyuiw > types/database.ts",
+    "db:push": "supabase db push",
+    "db:reset": "supabase db reset",
+    "migrate": "node scripts/run-migrations.js",
+    "setup:db": "node scripts/run-migrations.js"
   },
   "dependencies": {
     "@fingerprintjs/fingerprintjs": "^5.0.1",
@@ -42,6 +51,8 @@
     "@types/qrcode": "^1.5.6",
     "@types/react": "^19.0.1",
     "@types/react-dom": "^19.0.2",
-    "@types/ua-parser-js": "^0.7.39"
+    "@types/ua-parser-js": "^0.7.39",
+    "dotenv": "^17.2.3",
+    "supabase": "^2.54.11"
   }
 }
