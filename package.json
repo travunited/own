@@ -19,7 +19,8 @@
     "setup:db": "node scripts/setup-database.js",
     "db:guide": "node scripts/setup-database.js",
     "db:setup": "sh scripts/open-sql-editor.sh",
-    "db:auto": "node scripts/execute-schemas.js"
+    "db:auto": "node scripts/execute-schemas.js",
+    "create:admins": "node scripts/create-admin-profiles.js"
   },
   "dependencies": {
     "@fingerprintjs/fingerprintjs": "^5.0.1",
@@ -38,6 +39,7 @@
     "lucide-react": "^0.462.0",
     "next": "^15.0.3",
     "otplib": "^12.0.1",
+    "pg": "^8.16.3",
     "postcss": "^8.4.49",
     "qrcode": "^1.5.4",
     "rate-limiter-flexible": "^8.1.0",
