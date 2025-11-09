@@ -2,6 +2,7 @@ import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import VisaSearchCard from '@/components/VisaSearchCard';
 import TourSearchCard from '@/components/TourSearchCard';
+import TourShowcase from '@/components/tours/TourShowcase';
 import WorldMap from '@/components/WorldMap';
 import {
   Globe,
