@@ -15,6 +15,7 @@ import {
   Menu,
   X,
   Bell,
+  Gift,
 } from 'lucide-react';
 
 interface DashboardLayoutProps {
@@ -29,6 +30,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     { id: 'overview', icon: LayoutDashboard, label: 'Overview', href: '/dashboard' },
     { id: 'visas', icon: FileText, label: 'My Visas', href: '/dashboard/visas' },
     { id: 'tours', icon: Plane, label: 'My Tours', href: '/dashboard/tours' },
+    { id: 'referrals', icon: Gift, label: 'Referrals', href: '/dashboard/referrals' },
     { id: 'travellers', icon: Users, label: 'Travellers', href: '/dashboard/travellers' },
     { id: 'payments', icon: CreditCard, label: 'Payments', href: '/dashboard/payments' },
     { id: 'support', icon: HeadphonesIcon, label: 'Support', href: '/dashboard/support' },
