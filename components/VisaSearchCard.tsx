@@ -1,0 +1,93 @@
+'use client';
+
+import { useState } from 'react';
+import { Search, Users, MapPin } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+
+export default function VisaSearchCard() {
+  const router = useRouter();
+  const [formData, setFormData] = useState({
+    country: '',
+    visaType: '',
+    travellers: 1,
+  });
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (formData.country) {
+      router.push(`/visas/${formData.country.toLowerCase()}`);
+    }
+  };
+
+  return (
+    <div className="bg-white rounded-2xl shadow-xl p-8">
+      <h3 className="text-2xl font-bold text-gray-900 mb-6">Apply for Visa</h3>
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Select Country
+          </label>
+          <div className="relative">
+            <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+            <select
+              value={formData.country}
+              onChange={(e) => setFormData({ ...formData, country: e.target.value })}
+              className="input-field pl-10"
+              required
+            >
+              <option value="">Choose destination</option>
+              <option value="dubai">Dubai (UAE)</option>
+              <option value="singapore">Singapore</option>
+              <option value="uk">United Kingdom</option>
+              <option value="schengen">Schengen</option>
+              <option value="usa">United States</option>
+              <option value="thailand">Thailand</option>
+              <option value="malaysia">Malaysia</option>
+            </select>
+          </div>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Visa Type
+          </label>
+          <select
+            value={formData.visaType}
+            onChange={(e) => setFormData({ ...formData, visaType: e.target.value })}
+            className="input-field"
+          >
+            <option value="">All Types</option>
+            <option value="tourist">Tourist Visa</option>
+            <option value="business">Business Visa</option>
+            <option value="transit">Transit Visa</option>
+            <option value="student">Student Visa</option>
+            <option value="work">Work Visa</option>
+          </select>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Number of Travellers
+          </label>
+          <div className="relative">
+            <Users className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+            <input
+              type="number"
+              min="1"
+              max="20"
+              value={formData.travellers}
+              onChange={(e) => setFormData({ ...formData, travellers: parseInt(e.target.value) })}
+              className="input-field pl-10"
+            />
+          </div>
+        </div>
+
+        <button type="submit" className="w-full btn-primary flex items-center justify-center">
+          <Search className="w-5 h-5 mr-2" />
+          Search Visa
+        </button>
+      </form>
+    </div>
+  );
+}
+
