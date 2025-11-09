@@ -1,65 +1,90 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, Suspense } from 'react';
+import { useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import PasswordStrength from '@/components/auth/PasswordStrength';
-import { Mail, Lock, User, AlertCircle, CheckCircle } from 'lucide-react';
+import { Lock, AlertCircle, CheckCircle } from 'lucide-react';
 
-export default function SignupPage() {
+function ResetPasswordContent() {
+  const searchParams = useSearchParams();
   const router = useRouter();
+  const [token, setToken] = useState('');
   const [formData, setFormData] = useState({
-    fullName: '',
-    email: '',
     password: '',
     confirmPassword: '',
-    agreeToTerms: false,
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
 
+  useEffect(() => {
+    const tokenParam = searchParams.get('token');
+    if (tokenParam) {
+      setToken(tokenParam);
+    } else {
+      setError('Invalid or missing reset token');
+    }
+  }, [searchParams]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-    setLoading(true);
 
-    // Validate passwords match
     if (formData.password !== formData.confirmPassword) {
       setError('Passwords do not match');
-      setLoading(false);
       return;
     }
 
+    setLoading(true);
+
     try {
-      const response = await fetch('/api/auth/signup', {
+      const response = await fetch('/api/auth/reset-password', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          email: formData.email,
+          token,
           password: formData.password,
-          fullName: formData.fullName,
         }),
       });
 
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || 'Signup failed');
+        throw new Error(data.error || 'Password reset failed');
       }
 
       setSuccess(true);
-      
-      // Redirect to verify email page after 2 seconds
+
+      // Redirect to login after 3 seconds
       setTimeout(() => {
-        router.push('/verify-email');
-      }, 2000);
+        router.push('/login');
+      }, 3000);
     } catch (err: any) {
       setError(err.message || 'An error occurred');
     } finally {
       setLoading(false);
     }
   };
+
+  if (!token && error) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-primary-600 to-primary-700 flex items-center justify-center p-4">
+        <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-8 text-center">
+          <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <AlertCircle className="w-8 h-8 text-red-600" />
+          </div>
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">Invalid Link</h2>
+          <p className="text-gray-600 mb-6">
+            This password reset link is invalid or has expired.
+          </p>
+          <Link href="/forgot-password" className="block w-full btn-primary text-center">
+            Request New Link
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   if (success) {
     return (
@@ -68,11 +93,11 @@ export default function SignupPage() {
           <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
             <CheckCircle className="w-8 h-8 text-green-600" />
           </div>
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">Account Created!</h2>
-          <p className="text-gray-600 mb-4">
-            Please check your email to verify your account.
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">Password Reset Complete!</h2>
+          <p className="text-gray-600 mb-6">
+            Your password has been successfully reset. You can now sign in with your new password.
           </p>
-          <p className="text-sm text-gray-500">Redirecting...</p>
+          <p className="text-sm text-gray-500">Redirecting to login...</p>
         </div>
       </div>
     );
@@ -86,8 +111,8 @@ export default function SignupPage() {
           <Link href="/" className="text-3xl font-bold text-primary-600">
             Travunited
           </Link>
-          <h2 className="text-2xl font-bold text-gray-900 mt-4">Create Account</h2>
-          <p className="text-gray-600 mt-2">Join thousands of happy travelers</p>
+          <h2 className="text-2xl font-bold text-gray-900 mt-4">Reset Password</h2>
+          <p className="text-gray-600 mt-2">Enter your new password below</p>
         </div>
 
         {error && (
@@ -100,43 +125,7 @@ export default function SignupPage() {
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Full Name *
-            </label>
-            <div className="relative">
-              <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-              <input
-                type="text"
-                value={formData.fullName}
-                onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
-                className="input-field pl-10"
-                placeholder="John Doe"
-                required
-                disabled={loading}
-              />
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Email Address *
-            </label>
-            <div className="relative">
-              <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-              <input
-                type="email"
-                value={formData.email}
-                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                className="input-field pl-10"
-                placeholder="you@example.com"
-                required
-                disabled={loading}
-              />
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Password *
+              New Password *
             </label>
             <div className="relative">
               <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
@@ -159,7 +148,7 @@ export default function SignupPage() {
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Confirm Password *
+              Confirm New Password *
             </label>
             <div className="relative">
               <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
@@ -178,45 +167,24 @@ export default function SignupPage() {
             )}
           </div>
 
-          <div className="flex items-start">
-            <input
-              type="checkbox"
-              id="terms"
-              checked={formData.agreeToTerms}
-              onChange={(e) => setFormData({ ...formData, agreeToTerms: e.target.checked })}
-              className="mt-1 mr-2"
-              required
-              disabled={loading}
-            />
-            <label htmlFor="terms" className="text-sm text-gray-600">
-              I agree to the{' '}
-              <Link href="/terms" className="text-primary-600 hover:text-primary-700">
-                Terms & Conditions
-              </Link>{' '}
-              and{' '}
-              <Link href="/privacy" className="text-primary-600 hover:text-primary-700">
-                Privacy Policy
-              </Link>
-            </label>
-          </div>
-
-          <button 
-            type="submit" 
+          <button
+            type="submit"
             className="btn-primary w-full disabled:opacity-50 disabled:cursor-not-allowed"
             disabled={loading}
           >
-            {loading ? 'Creating Account...' : 'Create Account'}
+            {loading ? 'Resetting Password...' : 'Reset Password'}
           </button>
         </form>
-
-        {/* Login Link */}
-        <p className="text-center text-gray-600 mt-6">
-          Already have an account?{' '}
-          <Link href="/login" className="text-primary-600 hover:text-primary-700 font-medium">
-            Log in
-          </Link>
-        </p>
       </div>
     </div>
   );
 }
+
+export default function ResetPasswordPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-gradient-to-br from-primary-600 to-primary-700 flex items-center justify-center"><div className="text-white">Loading...</div></div>}>
+      <ResetPasswordContent />
+    </Suspense>
+  );
+}
+
