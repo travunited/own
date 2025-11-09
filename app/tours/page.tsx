@@ -3,6 +3,8 @@ import Footer from '@/components/Footer';
 import Link from 'next/link';
 import { Search, Filter, Calendar, Users, Star, CheckCircle, MapPin, Clock } from 'lucide-react';
 
+export const dynamic = 'force-dynamic';
+
 export default function ToursPage() {
   const tours = [
     {
