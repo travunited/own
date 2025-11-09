@@ -3,7 +3,7 @@ import Razorpay from 'razorpay';
 // Lazy initialization of Razorpay instance (server-side only)
 let razorpayInstance: Razorpay | null = null;
 
-function getRazorpayInstance() {
+export function getRazorpayInstance() {
   if (!razorpayInstance) {
     razorpayInstance = new Razorpay({
       key_id: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || 'dummy_key',
