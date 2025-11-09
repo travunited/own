@@ -15,6 +15,7 @@ import {
   Users as UsersIcon,
   AlertTriangle,
   Download,
+  Search,
 } from 'lucide-react';
 
 interface VisaDetailPageProps {

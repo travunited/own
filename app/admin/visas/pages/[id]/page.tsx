@@ -14,6 +14,7 @@ import {
   MessageSquare,
   Settings,
   Layers,
+  Check,
 } from 'lucide-react';
 
 export default function VisaPageEditorPage() {
