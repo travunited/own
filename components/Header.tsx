@@ -11,6 +11,7 @@ export default function Header() {
     { name: 'Visas', href: '/visas' },
     { name: 'Tours', href: '/tours' },
     { name: 'Corporate', href: '/corporate' },
+    { name: 'Team', href: '/team' },
     { name: 'Blog', href: '/blog' },
     { name: 'Track', href: '/track' },
     { name: 'About', href: '/about' },
