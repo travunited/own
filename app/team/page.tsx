@@ -1,27 +1,43 @@
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import { Linkedin, Twitter, Mail, Users, Award, Target } from 'lucide-react';
-import { supabase } from '@/lib/supabase';
+import { createClient } from '@supabase/supabase-js';
 
 export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 async function getTeamMembers() {
-  
-  const { data: leadership } = await supabase
-    .from('team_members')
-    .select('*')
-    .eq('department', 'leadership')
-    .eq('is_active', true)
-    .order('display_order');
-  
-  const { data: team } = await supabase
-    .from('team_members')
-    .select('*')
-    .eq('department', 'team')
-    .eq('is_active', true)
-    .order('display_order');
-  
-  return { leadership: leadership || [], team: team || [] };
+  try {
+    // Initialize Supabase client with environment variables
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    
+    if (!supabaseUrl || !supabaseKey) {
+      console.error('Supabase credentials not found');
+      return { leadership: [], team: [] };
+    }
+    
+    const supabase = createClient(supabaseUrl, supabaseKey);
+    
+    const { data: leadership } = await supabase
+      .from('team_members')
+      .select('*')
+      .eq('department', 'leadership')
+      .eq('is_active', true)
+      .order('display_order');
+    
+    const { data: team } = await supabase
+      .from('team_members')
+      .select('*')
+      .eq('department', 'team')
+      .eq('is_active', true)
+      .order('display_order');
+    
+    return { leadership: leadership || [], team: team || [] };
+  } catch (error) {
+    console.error('Error fetching team members:', error);
+    return { leadership: [], team: [] };
+  }
 }
 
 export default async function TeamPage() {
