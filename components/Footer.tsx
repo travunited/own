@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { Facebook, Twitter, Instagram, Linkedin, Mail, Phone, MapPin } from 'lucide-react';
+import { Facebook, Twitter, Instagram, Linkedin, Mail, Phone, MapPin, MessageCircle } from 'lucide-react';
 
 export default function Footer() {
   const quickLinks = [
@@ -35,20 +35,20 @@ export default function Footer() {
           <div>
             <h3 className="text-white text-xl font-bold mb-4">Travunited</h3>
             <p className="text-sm mb-4">
-              Your trusted partner for visa applications and curated tour packages.
-              Making travel simple, secure, and seamless.
+              Travunited of India Pvt Ltd<br />
+              Making global travel and visa services simple, fast, and transparent.
             </p>
             <div className="flex space-x-4">
-              <a href="#" className="hover:text-primary-400 transition-colors">
+              <a href="https://facebook.com/travunited" target="_blank" rel="noopener noreferrer" className="hover:text-primary-400 transition-colors">
                 <Facebook className="w-5 h-5" />
               </a>
-              <a href="#" className="hover:text-primary-400 transition-colors">
+              <a href="https://twitter.com/travunited" target="_blank" rel="noopener noreferrer" className="hover:text-primary-400 transition-colors">
                 <Twitter className="w-5 h-5" />
               </a>
-              <a href="#" className="hover:text-primary-400 transition-colors">
+              <a href="https://instagram.com/travunited" target="_blank" rel="noopener noreferrer" className="hover:text-primary-400 transition-colors">
                 <Instagram className="w-5 h-5" />
               </a>
-              <a href="#" className="hover:text-primary-400 transition-colors">
+              <a href="https://linkedin.com/company/travunited" target="_blank" rel="noopener noreferrer" className="hover:text-primary-400 transition-colors">
                 <Linkedin className="w-5 h-5" />
               </a>
             </div>
@@ -94,18 +94,28 @@ export default function Footer() {
             <ul className="space-y-3">
               <li className="flex items-start text-sm">
                 <MapPin className="w-5 h-5 mr-2 flex-shrink-0 mt-0.5" />
-                <span>123 Business Park, Bangalore, Karnataka 560001, India</span>
+                <span>
+                  #F307, 1st Floor, Regal Nxt,<br />
+                  Udupi, Karnataka – 576103,<br />
+                  India
+                </span>
               </li>
               <li className="flex items-center text-sm">
                 <Phone className="w-5 h-5 mr-2 flex-shrink-0" />
-                <a href="tel:+911234567890" className="hover:text-primary-400">
-                  +91 123 456 7890
+                <a href="tel:+916360392398" className="hover:text-primary-400">
+                  +91 6360392398
+                </a>
+              </li>
+              <li className="flex items-center text-sm">
+                <MessageCircle className="w-5 h-5 mr-2 flex-shrink-0" />
+                <a href="https://wa.me/916360392398" target="_blank" rel="noopener noreferrer" className="hover:text-primary-400">
+                  WhatsApp Chat
                 </a>
               </li>
               <li className="flex items-center text-sm">
                 <Mail className="w-5 h-5 mr-2 flex-shrink-0" />
-                <a href="mailto:support@travunited.com" className="hover:text-primary-400">
-                  support@travunited.com
+                <a href="mailto:info@travunited.com" className="hover:text-primary-400">
+                  info@travunited.com
                 </a>
               </li>
             </ul>
@@ -116,7 +126,7 @@ export default function Footer() {
         <div className="border-t border-gray-800 mt-8 pt-8">
           <div className="flex flex-col md:flex-row justify-between items-center">
             <p className="text-sm text-gray-400">
-              © {new Date().getFullYear()} Travunited. All rights reserved.
+              © {new Date().getFullYear()} Travunited of India Pvt Ltd. All rights reserved.
             </p>
             <div className="flex space-x-6 mt-4 md:mt-0">
               {legal.map((link) => (
@@ -135,4 +145,3 @@ export default function Footer() {
     </footer>
   );
 }
-

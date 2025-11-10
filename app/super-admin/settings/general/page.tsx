@@ -35,10 +35,10 @@ export default function GeneralSettingsPage() {
     faviconUrl: '/favicon.ico',
     
     // Contact Information
-    email: 'support@travunited.com',
-    phone: '+91 98765 43210',
-    whatsapp: '+91 98765 43210',
-    address: '123 Travel Street, Mumbai, Maharashtra 400001, India',
+    email: 'info@travunited.com',
+    phone: '+91 6360392398',
+    whatsapp: '+91 6360392398',
+    address: '#F307, 1st Floor, Regal Nxt, Udupi, Karnataka – 576103, India',
     
     // Business Hours
     businessHours: {

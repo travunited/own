@@ -175,8 +175,8 @@ function VisaApplyContent() {
               </button>
               <div className="text-right">
                 <p className="text-sm text-gray-600">Need help?</p>
-                <a href="tel:+911234567890" className="text-primary-600 font-medium text-sm">
-                  +91 123 456 7890
+                <a href="tel:+916360392398" className="text-primary-600 font-medium text-sm">
+                  +91 6360392398
                 </a>
               </div>
             </div>
