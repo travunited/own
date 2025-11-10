@@ -1,8 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import {
   ChevronLeft,
   ChevronRight,
@@ -14,6 +14,7 @@ import {
   FileText,
   Calendar,
   Info,
+  Save,
 } from 'lucide-react';
 
 // Step components
@@ -24,17 +25,31 @@ import AddonsStep from '@/components/visa-apply/AddonsStep';
 import ReviewStep from '@/components/visa-apply/ReviewStep';
 import PaymentStep from '@/components/visa-apply/PaymentStep';
 
-export default function VisaApplyPage() {
+export const dynamic = 'force-dynamic';
+
+function VisaApplyContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [currentStep, setCurrentStep] = useState(1);
+  const [applicationId, setApplicationId] = useState<string | null>(null);
+  const [applicationNumber, setApplicationNumber] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  
   const [applicationData, setApplicationData] = useState({
-    country: '',
-    visaType: '',
-    processingType: 'STANDARD',
+    application_id: null as string | null,
+    country_id: searchParams.get('country') || '',
+    visa_type_id: searchParams.get('visa_type') || '',
+    country_name: '',
+    visa_type_name: '',
+    processing_type: 'STANDARD',
     travellers: [],
     documents: {},
     addons: [],
-    totalAmount: 0,
+    total_amount: 0,
+    base_price: 0,
+    service_charge: 0,
+    processing_charge: 0,
+    addons_charge: 0,
   });
 
   const steps = [
@@ -48,7 +63,46 @@ export default function VisaApplyPage() {
 
   const CurrentStepComponent = steps[currentStep - 1].component;
 
-  const handleNext = () => {
+  // Create application when Step 1 is complete
+  const handleStepComplete = async (stepNumber: number, stepData: any) => {
+    if (stepNumber === 1 && !applicationId) {
+      // Create application draft
+      try {
+        const response = await fetch('/api/visa-applications/create', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            country_id: stepData.country_id,
+            visa_type_id: stepData.visa_type_id,
+            processing_type: stepData.processing_type,
+          }),
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+          setApplicationId(result.application.id);
+          setApplicationNumber(result.application_number);
+          setApplicationData({
+            ...applicationData,
+            ...stepData,
+            application_id: result.application.id,
+          });
+        } else {
+          alert('Failed to create application. Please try again.');
+          return;
+        }
+      } catch (error) {
+        console.error('Error creating application:', error);
+        alert('Failed to create application. Please try again.');
+        return;
+      }
+    } else {
+      setApplicationData({ ...applicationData, ...stepData });
+    }
+  };
+
+  const handleNext = async () => {
     if (currentStep < steps.length) {
       setCurrentStep(currentStep + 1);
       window.scrollTo(0, 0);
@@ -68,6 +122,33 @@ export default function VisaApplyPage() {
     }
   };
 
+  const handleSaveAndExit = async () => {
+    if (!applicationId) {
+      router.push('/dashboard/applications');
+      return;
+    }
+
+    setSaving(true);
+    try {
+      await fetch(`/api/visa-applications/${applicationId}/auto-save`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          step: currentStep,
+          data: applicationData,
+        }),
+      });
+
+      alert('Application saved! You can resume it later from your dashboard.');
+      router.push('/dashboard/applications');
+    } catch (error) {
+      console.error('Error saving:', error);
+      alert('Failed to save application');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
@@ -77,11 +158,27 @@ export default function VisaApplyPage() {
             <Link href="/" className="text-2xl font-bold text-primary-600">
               Travunited
             </Link>
-            <div className="text-right">
-              <p className="text-sm text-gray-600">Need help?</p>
-              <a href="tel:+911234567890" className="text-primary-600 font-medium">
-                +91 123 456 7890
-              </a>
+            <div className="flex items-center gap-4">
+              {applicationNumber && (
+                <div className="text-sm">
+                  <p className="text-gray-600">Application #</p>
+                  <p className="font-mono font-bold text-primary-600">{applicationNumber}</p>
+                </div>
+              )}
+              <button
+                onClick={handleSaveAndExit}
+                disabled={saving}
+                className="btn-outline text-sm flex items-center"
+              >
+                <Save className="w-4 h-4 mr-2" />
+                {saving ? 'Saving...' : 'Save & Exit'}
+              </button>
+              <div className="text-right">
+                <p className="text-sm text-gray-600">Need help?</p>
+                <a href="tel:+911234567890" className="text-primary-600 font-medium text-sm">
+                  +91 123 456 7890
+                </a>
+              </div>
             </div>
           </div>
         </div>
@@ -105,11 +202,11 @@ export default function VisaApplyPage() {
                     onClick={() => handleStepClick(step.number)}
                   >
                     <div
-                      className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                      className={`w-10 h-10 rounded-full flex items-center justify-center transition-all ${
                         isCompleted
                           ? 'bg-green-500 text-white'
                           : isCurrent
-                          ? 'bg-primary-600 text-white'
+                          ? 'bg-primary-600 text-white ring-4 ring-primary-100'
                           : 'bg-gray-200 text-gray-600'
                       }`}
                     >
@@ -121,12 +218,14 @@ export default function VisaApplyPage() {
                     </div>
                     <div className="ml-3 hidden md:block">
                       <p className="text-xs text-gray-600">Step {step.number}</p>
-                      <p className="font-medium text-gray-900">{step.title}</p>
+                      <p className={`font-medium ${isCurrent ? 'text-primary-600' : 'text-gray-900'}`}>
+                        {step.title}
+                      </p>
                     </div>
                   </div>
                   {index < steps.length - 1 && (
                     <div
-                      className={`flex-1 h-0.5 mx-4 ${
+                      className={`flex-1 h-0.5 mx-4 transition-all ${
                         step.number < currentStep ? 'bg-green-500' : 'bg-gray-200'
                       }`}
                     />
@@ -143,7 +242,9 @@ export default function VisaApplyPage() {
         <div className="max-w-4xl mx-auto">
           <CurrentStepComponent
             data={applicationData}
-            onUpdate={setApplicationData}
+            onUpdate={(newData: any) => {
+              handleStepComplete(currentStep, newData);
+            }}
             onNext={handleNext}
             onBack={handleBack}
           />
@@ -153,3 +254,17 @@ export default function VisaApplyPage() {
   );
 }
 
+export default function VisaApplyPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin w-12 h-12 border-4 border-primary-600 border-t-transparent rounded-full mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading application...</p>
+        </div>
+      </div>
+    }>
+      <VisaApplyContent />
+    </Suspense>
+  );
+}

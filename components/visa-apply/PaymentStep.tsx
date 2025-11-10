@@ -1,8 +1,8 @@
 'use client';
 
 import { useState } from 'react';
+import { CreditCard, Shield, CheckCircle, AlertCircle } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { CreditCard, Smartphone, Building, Wallet, CheckCircle, Lock } from 'lucide-react';
 
 interface PaymentStepProps {
   data: any;
@@ -11,207 +11,232 @@ interface PaymentStepProps {
   onBack: () => void;
 }
 
+declare global {
+  interface Window {
+    Razorpay: any;
+  }
+}
+
 export default function PaymentStep({ data, onUpdate, onNext, onBack }: PaymentStepProps) {
   const router = useRouter();
-  const [paymentMethod, setPaymentMethod] = useState<string>('');
-  const [isProcessing, setIsProcessing] = useState(false);
+  const [processing, setProcessing] = useState(false);
+  const [error, setError] = useState('');
 
-  const paymentMethods = [
-    {
-      id: 'upi',
-      name: 'UPI',
-      description: 'Pay via Google Pay, PhonePe, Paytm',
-      icon: Smartphone,
-      popular: true,
-    },
-    {
-      id: 'card',
-      name: 'Credit/Debit Card',
-      description: 'Visa, Mastercard, Rupay',
-      icon: CreditCard,
-      popular: true,
-    },
-    {
-      id: 'netbanking',
-      name: 'Net Banking',
-      description: 'All major banks supported',
-      icon: Building,
-      popular: false,
-    },
-    {
-      id: 'wallet',
-      name: 'Wallets',
-      description: 'Paytm, PhonePe, Amazon Pay',
-      icon: Wallet,
-      popular: false,
-    },
-  ];
+  const travellers = data.travellers || [];
+  const totalPerTraveller = (data.base_price || 0) + (data.service_charge || 0) + (data.processing_charge || 0) + (data.addons_charge || 0);
+  const grandTotal = totalPerTraveller * travellers.length;
 
-  const handlePayment = async () => {
-    if (!paymentMethod) {
-      alert('Please select a payment method');
-      return;
+  const initiatePayment = async () => {
+    setProcessing(true);
+    setError('');
+
+    try {
+      // Step 1: Create Razorpay order
+      const orderResponse = await fetch('/api/razorpay/create-order', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          amount: grandTotal,
+          currency: 'INR',
+          applicationId: data.application_id,
+        }),
+      });
+
+      const orderData = await orderResponse.json();
+
+      if (!orderData.success) {
+        throw new Error(orderData.error || 'Failed to create payment order');
+      }
+
+      // Step 2: Load Razorpay checkout
+      const options = {
+        key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
+        amount: grandTotal * 100, // Amount in paise
+        currency: 'INR',
+        name: 'Travunited',
+        description: `Visa Application - ${data.country_name}`,
+        order_id: orderData.orderId,
+        handler: async function (response: any) {
+          // Step 3: Verify payment
+          await verifyPayment(response);
+        },
+        prefill: {
+          name: travellers[0]?.full_name || '',
+          email: '', // Get from user profile
+          contact: '', // Get from user profile
+        },
+        notes: {
+          application_id: data.application_id,
+          application_number: data.application_number,
+        },
+        theme: {
+          color: '#2563eb',
+        },
+        modal: {
+          ondismiss: function () {
+            setProcessing(false);
+          },
+        },
+      };
+
+      const razorpay = new window.Razorpay(options);
+      razorpay.open();
+    } catch (error: any) {
+      console.error('Payment error:', error);
+      setError(error.message || 'Failed to initiate payment');
+      setProcessing(false);
     }
+  };
 
-    setIsProcessing(true);
+  const verifyPayment = async (paymentResponse: any) => {
+    try {
+      const verifyResponse = await fetch('/api/razorpay/verify-payment', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          razorpay_order_id: paymentResponse.razorpay_order_id,
+          razorpay_payment_id: paymentResponse.razorpay_payment_id,
+          razorpay_signature: paymentResponse.razorpay_signature,
+          applicationId: data.application_id,
+        }),
+      });
 
-    // TODO: Integrate with Razorpay
-    // Simulate payment process
-    setTimeout(() => {
-      setIsProcessing(false);
-      // Redirect to success page
-      router.push('/visa-apply/success?id=TRV' + Date.now());
-    }, 2000);
+      const verifyData = await verifyResponse.json();
+
+      if (verifyData.success) {
+        // Update application status to 'submitted'
+        await fetch(`/api/visa-applications/${data.application_id}/submit`, {
+          method: 'POST',
+        });
+
+        // Redirect to success page
+        router.push(`/visa-apply/success?app=${data.application_id}`);
+      } else {
+        throw new Error('Payment verification failed');
+      }
+    } catch (error: any) {
+      console.error('Verification error:', error);
+      setError('Payment verification failed. Please contact support.');
+      setProcessing(false);
+    }
   };
 
   return (
     <div className="space-y-6">
       <div className="card">
-        <h2 className="text-2xl font-bold text-gray-900 mb-2">Complete Payment</h2>
+        <h2 className="text-2xl font-bold text-gray-900 mb-2">Payment</h2>
         <p className="text-gray-600 mb-6">
-          Choose your preferred payment method to complete the application
+          Secure payment powered by Razorpay
         </p>
 
-        {/* Amount Summary */}
-        <div className="bg-gradient-to-r from-primary-600 to-primary-700 text-white rounded-xl p-6 mb-6">
-          <p className="text-sm opacity-90 mb-1">Total Amount</p>
-          <p className="text-4xl font-bold mb-4">
-            ₹{(data.totalAmount || 0).toLocaleString('en-IN')}
-          </p>
-          <div className="flex items-center text-sm opacity-90">
-            <Lock className="w-4 h-4 mr-2" />
-            <span>Secure payment powered by Razorpay</span>
+        {/* Payment Summary */}
+        <div className="bg-gradient-to-r from-primary-50 to-purple-50 border border-primary-200 rounded-lg p-6 mb-6">
+          <h3 className="font-bold text-lg text-gray-900 mb-4">Final Amount</h3>
+          
+          <div className="space-y-2 text-sm mb-4">
+            <div className="flex justify-between">
+              <span className="text-gray-600">Price per Traveller</span>
+              <span className="font-medium">₹{totalPerTraveller.toLocaleString('en-IN')}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-600">Number of Travellers</span>
+              <span className="font-medium">× {travellers.length}</span>
+            </div>
+            <div className="border-t-2 border-primary-200 pt-3 flex justify-between">
+              <span className="font-bold text-gray-900 text-xl">Grand Total</span>
+              <span className="font-bold text-primary-600 text-3xl">
+                ₹{grandTotal.toLocaleString('en-IN')}
+              </span>
+            </div>
           </div>
         </div>
 
         {/* Payment Methods */}
-        <div className="space-y-3 mb-6">
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Select Payment Method
-          </label>
-          {paymentMethods.map((method) => {
-            const Icon = method.icon;
-            const isSelected = paymentMethod === method.id;
-
-            return (
-              <button
-                key={method.id}
-                onClick={() => setPaymentMethod(method.id)}
-                className={`w-full p-4 border-2 rounded-lg text-left transition-all ${
-                  isSelected
-                    ? 'border-primary-600 bg-primary-50'
-                    : 'border-gray-200 hover:border-primary-300'
-                }`}
-              >
-                <div className="flex items-center">
-                  <div
-                    className={`w-12 h-12 rounded-lg flex items-center justify-center mr-4 ${
-                      isSelected ? 'bg-primary-600' : 'bg-gray-100'
-                    }`}
-                  >
-                    <Icon className={`w-6 h-6 ${isSelected ? 'text-white' : 'text-gray-600'}`} />
-                  </div>
-                  <div className="flex-1">
-                    <div className="flex items-center">
-                      <h3 className="font-bold text-gray-900">{method.name}</h3>
-                      {method.popular && (
-                        <span className="ml-2 badge bg-green-100 text-green-800 text-xs">
-                          Popular
-                        </span>
-                      )}
-                    </div>
-                    <p className="text-sm text-gray-600">{method.description}</p>
-                  </div>
-                  <div
-                    className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${
-                      isSelected ? 'border-primary-600 bg-primary-600' : 'border-gray-300'
-                    }`}
-                  >
-                    {isSelected && <CheckCircle className="w-5 h-5 text-white" />}
-                  </div>
-                </div>
-              </button>
-            );
-          })}
+        <div className="mb-6">
+          <h3 className="font-bold text-gray-900 mb-4">Payment Methods</h3>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <div className="p-3 border border-gray-200 rounded-lg text-center">
+              <CreditCard className="w-6 h-6 mx-auto mb-2 text-primary-600" />
+              <p className="text-xs font-medium">Credit/Debit Card</p>
+            </div>
+            <div className="p-3 border border-gray-200 rounded-lg text-center">
+              <p className="text-lg mb-1">💳</p>
+              <p className="text-xs font-medium">UPI</p>
+            </div>
+            <div className="p-3 border border-gray-200 rounded-lg text-center">
+              <p className="text-lg mb-1">🏦</p>
+              <p className="text-xs font-medium">Net Banking</p>
+            </div>
+            <div className="p-3 border border-gray-200 rounded-lg text-center">
+              <p className="text-lg mb-1">💰</p>
+              <p className="text-xs font-medium">Wallets</p>
+            </div>
+          </div>
         </div>
 
-        {/* Security Info */}
-        <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+        {/* Security */}
+        <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
           <div className="flex items-start">
-            <Lock className="w-5 h-5 text-green-600 mr-3 mt-0.5 flex-shrink-0" />
-            <div className="text-sm text-green-900">
-              <p className="font-medium mb-1">Secure Payment</p>
-              <p className="text-green-800">
-                Your payment information is encrypted and secure. We never store your card details.
-              </p>
+            <Shield className="w-5 h-5 text-green-600 mr-3 mt-0.5" />
+            <div>
+              <p className="font-medium text-green-900 mb-1">100% Secure Payment</p>
+              <ul className="text-sm text-green-800 space-y-1">
+                <li>• Your payment information is encrypted and secure</li>
+                <li>• We never store your card details</li>
+                <li>• Powered by Razorpay - trusted by millions</li>
+                <li>• PCI DSS compliant payment processing</li>
+              </ul>
             </div>
           </div>
         </div>
-      </div>
 
-      {/* Order Summary */}
-      <div className="card bg-gray-50">
-        <h3 className="font-bold text-lg mb-4">Order Summary</h3>
-        <div className="space-y-2 text-sm">
-          <div className="flex justify-between">
-            <span className="text-gray-600">Application Fee</span>
-            <span className="font-medium">
-              ₹{((data.basePrice || 5499) * (data.travellers?.length || 1)).toLocaleString('en-IN')}
-            </span>
-          </div>
-          {data.processingType === 'EXPRESS' && (
-            <div className="flex justify-between">
-              <span className="text-gray-600">Express Processing</span>
-              <span className="font-medium">
-                ₹{(2000 * (data.travellers?.length || 1)).toLocaleString('en-IN')}
-              </span>
-            </div>
-          )}
-          <div className="flex justify-between">
-            <span className="text-gray-600">Service Fee</span>
-            <span className="font-medium">₹500</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-gray-600">GST (18%)</span>
-            <span className="font-medium">
-              ₹{Math.round((data.totalAmount || 0) * 0.18).toLocaleString('en-IN')}
-            </span>
-          </div>
-          <div className="border-t border-gray-300 pt-2 mt-2">
-            <div className="flex justify-between items-center">
-              <span className="font-bold text-lg">Total</span>
-              <span className="font-bold text-2xl text-primary-600">
-                ₹{(data.totalAmount || 0).toLocaleString('en-IN')}
-              </span>
+        {/* Error Message */}
+        {error && (
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+            <div className="flex items-start">
+              <AlertCircle className="w-5 h-5 text-red-600 mr-3 mt-0.5" />
+              <div>
+                <p className="font-medium text-red-900 mb-1">Payment Error</p>
+                <p className="text-sm text-red-800">{error}</p>
+                <p className="text-xs text-red-700 mt-2">
+                  If the problem persists, please contact support or try again later.
+                </p>
+              </div>
             </div>
           </div>
-        </div>
-      </div>
+        )}
 
-      {/* Actions */}
-      <div className="flex justify-between">
-        <button onClick={onBack} className="btn-secondary" disabled={isProcessing}>
-          Back
-        </button>
+        {/* Pay Button */}
         <button
-          onClick={handlePayment}
-          disabled={!paymentMethod || isProcessing}
-          className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
+          onClick={initiatePayment}
+          disabled={processing}
+          className="btn-primary w-full py-4 text-lg font-bold disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
         >
-          {isProcessing ? (
+          {processing ? (
             <>
-              <span className="animate-spin mr-2">⏳</span>
+              <div className="animate-spin w-5 h-5 border-2 border-white border-t-transparent rounded-full mr-3"></div>
               Processing...
             </>
           ) : (
             <>
-              <Lock className="w-5 h-5 mr-2" />
-              Pay ₹{(data.totalAmount || 0).toLocaleString('en-IN')}
+              <CreditCard className="w-6 h-6 mr-3" />
+              Pay ₹{grandTotal.toLocaleString('en-IN')} Now
             </>
           )}
         </button>
+
+        <p className="text-center text-xs text-gray-600 mt-4">
+          By proceeding, you agree to our refund and cancellation policy
+        </p>
+      </div>
+
+      {/* Navigation */}
+      <div className="flex justify-between">
+        <button onClick={onBack} className="btn-outline px-8">
+          Back to Review
+        </button>
+        <div></div>
       </div>
     </div>
   );
 }
-
