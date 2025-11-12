@@ -80,7 +80,7 @@ USING (
     EXISTS (
         SELECT 1 FROM public.users
         WHERE users.id = auth.uid()
-        AND users.role = 'super_admin'
+        AND users.role = 'SUPER_ADMIN'
     )
 );
 
@@ -114,7 +114,7 @@ USING (
     EXISTS (
         SELECT 1 FROM public.users
         WHERE users.id = auth.uid()
-        AND users.role = 'super_admin'
+        AND users.role = 'SUPER_ADMIN'
     )
 );
 
