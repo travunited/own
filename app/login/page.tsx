@@ -50,6 +50,37 @@ export default function LoginPage() {
 
       const role = profile?.role || profile?.preferences?.role || 'user';
 
+      // Track session for admin users
+      if (['super_admin', 'admin', 'sub_admin', 'regional_admin', 'maintenance_admin'].includes(role)) {
+        const dashboardTypeMap: Record<string, string> = {
+          super_admin: 'super-admin',
+          admin: 'admin',
+          sub_admin: 'admin',
+          regional_admin: 'regional-admin',
+          maintenance_admin: 'maintenance',
+        };
+
+        try {
+          const sessionResponse = await fetch('/api/auth/track-session', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              dashboardType: dashboardTypeMap[role] || 'admin',
+            }),
+          });
+
+          const sessionData = await sessionResponse.json();
+          
+          if (sessionData.success && sessionData.sessionToken) {
+            // Store session token in localStorage for activity tracking
+            localStorage.setItem('admin_session_token', sessionData.sessionToken);
+          }
+        } catch (err) {
+          console.error('Error tracking session:', err);
+          // Continue with login even if session tracking fails
+        }
+      }
+
       // Redirect based on role
       const redirectRoutes: Record<string, string> = {
         super_admin: '/super-admin',

@@ -305,6 +305,13 @@ export default function SuperAdminDashboard() {
                 <Settings className="w-5 h-5 text-gray-600" />
                 <span className="font-medium text-gray-700">System Settings</span>
               </Link>
+              <Link
+                href="/super-admin/sessions"
+                className="flex items-center gap-3 p-3 hover:bg-gray-50 rounded-lg transition-colors"
+              >
+                <Shield className="w-5 h-5 text-red-600" />
+                <span className="font-medium text-gray-700">Session Tracking</span>
+              </Link>
             </div>
           </div>
         </div>

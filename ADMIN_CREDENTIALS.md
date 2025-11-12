@@ -28,8 +28,8 @@
 
 **User 1 - Super Admin:**
 ```
-Email: superadmin@travunited.com
-Password: SuperAdmin@123
+Email: travunited3@gmail.com
+Password: Marigudi@9
 ☑️ Auto Confirm User: YES
 ```
 
@@ -102,8 +102,8 @@ curl -X POST "$PROJECT_URL/auth/v1/admin/users" \
   -H "Authorization: Bearer $SERVICE_ROLE_KEY" \
   -H "Content-Type: application/json" \
   -d '{
-    "email": "superadmin@travunited.com",
-    "password": "SuperAdmin@123",
+    "email": "travunited3@gmail.com",
+    "password": "Marigudi@9",
     "email_confirm": true,
     "user_metadata": {
       "full_name": "Super Admin User",
