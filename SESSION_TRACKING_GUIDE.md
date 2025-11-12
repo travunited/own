@@ -92,6 +92,16 @@ Or manually execute:
 -- Click "Run"
 ```
 
+**⚠️ Important Note:** The schema uses the `user_role` enum with **UPPERCASE** values:
+```sql
+'SUPER_ADMIN'  -- NOT 'super_admin'
+'CUSTOMER'     -- NOT 'customer'
+'OPS_HEAD'     -- NOT 'ops_head'
+etc.
+```
+
+If you get an enum error, your database enum values are correct (uppercase).
+
 ### Step 2: Verify RLS Policies
 
 The schema includes Row Level Security (RLS) policies:
